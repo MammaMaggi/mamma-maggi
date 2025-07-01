@@ -1,228 +1,123 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mamma Maggi | Pedidos Online</title>
-  <!-- Google Fonts + Leaflet CSS -->
-  <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    :root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
-    a{color:var(--accent)} button{font-family:inherit;border:none;cursor:pointer}
-    h1,h2,h3{font-family:'Staatliches',cursive;font-weight:400}
-
-    /* Header */
-    header{display:flex;align-items:center;justify-content:center;gap:.7rem;padding:1rem 1rem 1.2rem;position:relative;text-align:center}
-    header h1{font-size:2.3rem;letter-spacing:2px}
-    #loginBtn{position:absolute;left:1rem;top:1rem;background:none;color:var(--fg);font-size:1.2rem}
-    #cartBtn{position:absolute;right:1rem;top:1rem;width:42px;height:42px;border:2px solid var(--fg);border-radius:50%;background:none;color:var(--fg);display:flex;align-items:center;justify-content:center}
-    #cartBtn span{font-size:.8rem}
-    #userInfo{font-size:.8rem;opacity:.8}
-
-    /* Sections */
-    section{max-width:960px;margin:auto;padding:2rem 1rem}
-    section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
-
-    /* Menu */
-    .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
-    .card{background:var(--card);border-radius:8px;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
-    .price{font-weight:700}
-    .card button{margin-top:auto;padding:.6rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
-
-    /* Modals */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .3s}
-    .modal.active{opacity:1;visibility:visible}
-    .box{background:var(--card);border-radius:8px;padding:1.4rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
-    .close{align-self:flex-end;color:var(--fg);font-size:1.3rem;cursor:pointer;background:none}
-
-    form{display:grid;gap:1rem}
-    input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#222;color:var(--fg)}
-    .btn{padding:.8rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
-
-    /* Cart */
-    .cart-item{display:flex;justify-content:space-between;align-items:center;gap:.4rem}
-    .qty{display:flex;align-items:center;gap:.4rem}
-    .qty button{width:24px;height:24px;border:1px solid var(--fg);background:none;color:var(--fg);border-radius:4px;font-weight:700}
-    .summary{text-align:right;font-size:1.05rem;font-weight:700}
-
-    #map{height:220px;border-radius:6px;margin-top:.5rem;display:none}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mamma Maggi | Pedidos Online</title>
+<link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
+a{color:var(--accent)}button{font-family:inherit;border:none;cursor:pointer}
+h1,h2,h3{font-family:'Staatliches',cursive;font-weight:400}
+header{display:flex;align-items:center;justify-content:center;gap:.7rem;padding:1rem 1rem 1.2rem;position:relative;text-align:center}
+header h1{font-size:2.3rem;letter-spacing:2px}
+#loginBtn{position:absolute;left:1rem;top:1rem;background:none;color:var(--fg);font-size:1.2rem}
+#cartBtn{position:absolute;right:1rem;top:1rem;width:42px;height:42px;border:2px solid var(--fg);border-radius:50%;background:none;color:var(--fg);display:flex;align-items:center;justify-content:center}
+#cartBtn span{font-size:.8rem}
+#userInfo{font-size:.8rem;opacity:.8}
+section{max-width:960px;margin:auto;padding:2rem 1rem}
+section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
+.card{background:var(--card);border-radius:8px;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
+.price{font-weight:700}
+.card button{margin-top:auto;padding:.6rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .3s}
+.modal.active{opacity:1;visibility:visible}
+.box{background:var(--card);border-radius:8px;padding:1.4rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
+.close{align-self:flex-end;color:var(--fg);font-size:1.3rem;cursor:pointer;background:none}
+form{display:grid;gap:1rem}
+input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#222;color:var(--fg)}
+.btn{padding:.8rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
+.cart-item{display:flex;justify-content:space-between;align-items:center;gap:.4rem}
+.qty{display:flex;align-items:center;gap:.4rem}
+.qty button{width:24px;height:24px;border:1px solid var(--fg);background:none;color:var(--fg);border-radius:4px;font-weight:700}
+.summary{text-align:right;font-size:1.05rem;font-weight:700}
+#map{height:220px;border-radius:6px;margin-top:.5rem;display:none}
+</style>
 </head>
 <body>
-  <header>
-    <button id="loginBtn" title="Ingresar / Registrarse">👤</button>
-    <h1>MAMMA MAGGI</h1>
-    <div id="userInfo"></div>
-    <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
-  </header>
-
-  <!-- Menu section (always visible) -->
-  <section id="menuSection">
-    <h2>Nuestro Menú</h2>
-    <div class="menu-grid" id="menuGrid"></div>
-  </section>
-
-  <!-- Auth Modal -->
-  <div class="modal" id="authModal">
-    <div class="box">
-      <button class="close" id="closeAuth">✕</button>
-      <h2 id="authTitle">Inicia Sesión</h2>
-      <form id="authForm">
-        <input type="email" id="emailAuth" placeholder="Correo" required />
-        <input type="password" id="passAuth" placeholder="Contraseña" required />
-        <div id="extraFields" style="display:none">
-          <input type="text" id="firstName" placeholder="Nombre" />
-          <input type="text" id="lastName" placeholder="Apellido" />
-          <input type="tel" id="phone" placeholder="Teléfono" />
-          <input type="text" id="address" placeholder="Dirección (Temuco)" />
-          <button type="button" class="btn" id="calcDistBtn">Confirmar dirección</button>
-          <p id="distInfo" style="text-align:center"></p>
-          <div id="map"></div>
-        </div>
-        <button class="btn" type="submit" id="authSubmit">Entrar</button>
-        <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5rem">¿No tienes cuenta? Regístrate</p>
-      </form>
-    </div>
-  </div>
-
-  <!-- Cart Modal -->
-  <div class="modal" id="cartModal">
-    <div class="box">
-      <button class="close" id="closeCart">✕</button>
-      <h2>Tu Pedido</h2>
-      <div id="cartItems"></div>
-      <div id="deliveryBox">
-        <label><input type="radio" name="deliveryType" value="pickup" checked /> Retiro</label>  
-        <label><input type="radio" name="deliveryType" value="delivery" /> Delivery</label>
-      </div>
-      <div style="margin-top:.6rem">
-        <label>Código descuento</label>
-        <div style="display:flex;gap:.5rem;margin-top:.3rem">
-          <input id="coupon" placeholder="MAGGI10" style="flex:1" />
-          <button class="btn" id="couponBtn" style="padding:.6rem .8rem">Aplicar</button>
-        </div>
-        <small id="couponMsg"></small>
-      </div>
-      <div id="pointsBox" style="display:none">
-        <p>Pts disponibles: <span id="pointsAvail">0</span></p>
-        <label><input type="checkbox" id="redeemChk" /> Usar puntos (1 pt = $100)</label>
-      </div>
-      <p class="summary">Subtotal: $<span id="subVal">0</span></p>
-      <p class="summary" id="delRow" style="display:none">Delivery (<span id="kmLab">0</span> km): $<span id="delVal">0</span></p>
-      <p class="summary" id="discRow" style="display:none">Descuento: –$<span id="discVal">0</span></p>
-      <p class="summary" id="redeemRow" style="display:none">Puntos: –$<span id="redeemVal">0</span></p>
-      <p class="summary">Total: $<span id="totVal">0</span></p>
-      <a class="btn" id="checkoutBtn" href="#">Finalizar por WhatsApp</a>
-    </div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    /* ---------- Static Data ---------- */
-    const MENU=[
-      {id:1,name:'Margarita',desc:'Salsa tomate, mozzarella, albahaca.',price:8990},
-      {id:2,name:'Pepperoni',desc:'Salsa tomate, mozzarella, pepperoni.',price:9500},
-      {id:3,name:'Vegetariana',desc:'Tomate, mozzarella, verduras mixtas.',price:10990},
-      {id:4,name:'Pitu',desc:'Jamón serrano, rúcula, parmesano.',price:11990},
-      {id:5,name:'Palitos de Ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
-    ];
-    const ORIGIN=[-38.7393,-72.6080]; // Lérida x Javiera Carrera
-    const DIST_FEE=km=>km<=3?0:km<=8?1000:km<=15?2000:4000;
-    const CODES={MAGGI10:0.1};
-    const WHATSAPP_PHONE='56949486579';
-    const POINT_RATE=0.001, POINT_VAL=100;
-
-    /* ---------- State ---------- */
-    const cart={};
-    const users=JSON.parse(localStorage.getItem('users')||'{}');
-    let user=null; // {email,pass,nombre,...,points,km,deliveryFee}
-    let delType='pickup',discCode=null,redeem=false;
-
-    /* ---------- Helpers ---------- */
-    const $=q=>document.querySelector(q);
-    const fmt=n=>n.toLocaleString('es-CL');
-    const toRad=d=>d*Math.PI/180;
-    const kmDist=(lat1,lon1,lat2,lon2)=>{const R=6371,dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));};
-
-    /* ---------- Menu render ---------- */
-    MENU.forEach(i=>{
-      const c=document.createElement('div');c.className='card';
-      c.innerHTML=`<h3>${i.name}</h3><p>${i.desc}</p><span class='price'>$${fmt(i.price)}</span><button class='btn' data-id='${i.id}'>Agregar</button>`;
-      $('#menuGrid').appendChild(c);
-    });
-    $('#menuGrid').onclick=e=>{if(e.target.matches('button[data-id]')){const id=+e.target.dataset.id;cart[id]=(cart[id]||0)+1;updCount();}};
-    const updCount=()=>$('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
-
-    /* ---------- Modals ctrl ---------- */
-    const show=(el)=>el.classList.add('active');
-    const hide=(el)=>el.classList.remove('active');
-    $('#loginBtn').onclick=()=>show($('#authModal'));
-    $('#closeAuth').onclick=()=>hide($('#authModal'));
-    $('#closeCart').onclick=()=>hide($('#cartModal'));
-
-    /* ---------- Auth logic ---------- */
-    let loginMode=true;
-    $('#toggleAuth').onclick=()=>{loginMode=!loginMode;$('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';$('#authSubmit').textContent=loginMode?'Entrar':'Registrar';$('#extraFields').style.display=loginMode?'none':'block';};
-
-    $('#calcDistBtn').onclick=async()=>{
-      const addr=$('#address').value.trim();if(!addr)return alert('Ingresa dirección');
-      const data=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
-      if(!data[0]) return alert('Dirección no encontrada');
-      const {lat,lon}=data[0];const km=Math.round(kmDist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;const fee=DIST_FEE(km);
-      $('#distInfo').textContent=`Dist: ${km} km • Delivery $${fmt(fee)}`;$('#map').style.display='block';
-      if(!window._map){
-        window._map=L.map('map').setView([lat,lon],13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
-      }
-      _map.setView([lat,lon],13); if(window._marker)_map.removeLayer(_marker); _marker=L.marker([lat,lon]).addTo(_map);
-      user={...user,lat:+lat,lng:+lon,km,deliveryFee:fee,address:addr};
-    };
-
-    $('#authForm').onsubmit=e=>{
-      e.preventDefault();
-      const email=$('#emailAuth').value.trim().toLowerCase(),pass=$('#passAuth').value;
-      if(loginMode){
-        if(!users[email]||users[email].pass!==pass) return alert('Credenciales incorrectas');
-        user={...users[email]};
-      }else{
-        if(!user||!user.km) return alert('Confirma dirección');
-        user={...user,email,pass,nombre:$('#firstName').value.trim(),apellido:$('#lastName').value.trim(),phone:$('#phone').value.trim(),points:0};
-        users[email]=user;localStorage.setItem('users',JSON.stringify(users));
-      }
-      $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points} pts)`;
-      $('#pointsAvail').textContent=user.points;$('#pointsBox').style.display='block';
-      hide($('#authModal'));
-      if($('#cartModal').classList.contains('pending-login')){show($('#cartModal'));$('#cartModal').classList.remove('pending-login');}
-    };
-
-    /* ---------- Cart render ---------- */
-    $('#cartBtn').onclick=()=>{renderCart();show($('#cartModal'));};
-    function renderCart(){
-      const wrap=$('#cartItems');wrap.innerHTML='';let sub=0;
-      for(const id in cart){const itm=MENU.find(m=>m.id==id),q=cart[id];wrap.innerHTML+=`<div class='cart-item'><span>${itm.name}</span><div class='qty' data-id='${id}'><button class='dec'>-</button><span>${q}</span><button class='inc'>+</button></div><span>$${fmt(itm.price*q)}</span></div>`;sub+=itm.price*q;}
-      if(!sub) wrap.innerHTML='<p>Carrito vacío</p>';
-      $('#subVal').textContent=fmt(sub);
-      calcTotals();
-    }
-    $('#cartItems').onclick=e=>{
-      if(e.target.closest('.qty')){
-        const id=+e.target.closest('.qty').dataset.id;
-        if(e.target.classList.contains('inc')) cart[id]++;
-        if(e.target.classList.contains('dec')) cart[id]=Math.max(0,cart[id]-1);
-        if(!cart[id]) delete cart[id];
-        updCount();renderCart();
-      }
-    };
-
-    document.querySelectorAll('input[name="deliveryType"]').forEach(r=>r.onchange=e=>{delType=e.target.value;calcTotals();});
-    $('#couponBtn').onclick=e=>{e.preventDefault();const c=$('#coupon').value.trim().toUpperCase();discCode=CODES[c]?c:null;$('#couponMsg').textContent=discCode?'Aplicado ✓':'Inválido';calcTotals();};
-    $('#redeemChk').onchange=e=>{redeem=e.target.checked;calcTotals();};
-
-    function calcTotals(){
-      const sub=parseInt($('#subVal').textContent.replace(/\./g,''))||0;
-      let del=0,km=0; if(delType==='delivery'&&user){del=user.deliveryFee;km=user.km;} $('#delRow').style.display=delType==='delivery'?'block':'none';$('#delVal').textContent=fmt(del);$('#kmLab').textContent=km;
-      const disc=discCode?Math.round(sub*CODES[discCode]):0;$('#discRow').style.display=disc? 'block':'none';$('#discVal').textContent=fmt(disc);
-      const redeemAmt=redeem&&user?Math.min(user.points*POINT_VAL,sub+del-disc):0;$('#redeemRow').style.display=redeemAmt?'
+<header>
+<button id="loginBtn" title="Ingresar / Registrarse">👤</button>
+<h1>MAMMA MAGGI</h1>
+<div id="userInfo"></div>
+<button id="cartBtn">🛒 <span id="cartCount">0</span></button>
+</header>
+<section>
+<h2>Nuestro Menú</h2>
+<div class="menu-grid" id="menuGrid"></div>
+</section>
+<!-- Auth Modal -->
+<div class="modal" id="authModal"><div class="box">
+<button class="close" id="closeAuth">✕</button>
+<h2 id="authTitle">Inicia Sesión</h2>
+<form id="authForm">
+<input type="email" id="email" placeholder="Correo" required />
+<input type="password" id="pass" placeholder="Contraseña" required />
+<div id="extra" style="display:none">
+<input id="name" placeholder="Nombre" />
+<input id="last" placeholder="Apellido" />
+<input id="phone" placeholder="Teléfono" />
+<input id="addr" placeholder="Dirección (Temuco)" />
+<button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
+<p id="distText" style="text-align:center"></p>
+<div id="map"></div>
+</div>
+<button class="btn" id="authSubmit">Entrar</button>
+<p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">¿No tienes cuenta? Regístrate</p>
+</form></div></div>
+<!-- Cart Modal -->
+<div class="modal" id="cartModal"><div class="box">
+<button class="close" id="closeCart">✕</button>
+<h2>Tu Pedido</h2>
+<div id="cartItems"></div>
+<div><label><input type="radio" name="delType" value="pickup" checked /> Retiro</label>  <label><input type="radio" name="delType" value="delivery"/> Delivery</label></div>
+<div style="margin-top:.5rem"><label>Código</label><div style="display:flex;gap:.4rem;margin-top:.3rem"><input id="coupon" style="flex:1"/><button class="btn" id="couponBtn" style="padding:.5rem .8rem">Aplicar</button></div><small id="couponMsg"></small></div>
+<div id="ptsBox" style="display:none"><p>Puntos: <span id="pts">0</span></p><label><input type="checkbox" id="redeem"/> Usar pts</label></div>
+<p class="summary">Subtotal: $<span id="sub">0</span></p>
+<p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
+<p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
+<p class="summary" id="redRow" style="display:none">Puntos: –$<span id="red">0</span></p>
+<p class="summary">Total: $<span id="tot">0</span></p>
+<a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
+</div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const MENU=[{id:1,name:'Margarita',desc:'Salsa tomate, mozzarella, albahaca.',price:8990},{id:2,name:'Pepperoni',desc:'Salsa tomate, mozzarella, pepperoni.',price:9500},{id:3,name:'Vegetariana',desc:'Verduras mixtas.',price:10990},{id:4,name:'Pitu',desc:'Jamón serrano, rúcula, parmesano.',price:11990},{id:5,name:'Palitos de Ajo',desc:'Palitos con ajo.',price:4500}];
+const ORIGIN=[-38.7393,-72.608];
+const CODE={MAGGI10:.1};
+const PHONE='56949486579';
+const RATE=.001,VAL=100;
+const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
+const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
+/* Storage */
+const users=JSON.parse(localStorage.getItem('users')||'{}');
+function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
+/* Points release check */
+function releasePoints(u){if(u.pending&&Date.now()-u.pendingAt>=300000){u.points=(u.points||0)+u.pending;u.pending=0;saveUsers();}}
+/* State */
+let user=null,cart={},delType='pickup',code=null,redeem=false;
+/* Menu */
+MENU.forEach(i=>{const c=document.createElement('div');c.className='card';c.innerHTML=`<h3>${i.name}</h3><p>${i.desc}</p><span class='price'>$${fmt(i.price)}</span><button class='btn' data-id='${i.id}'>Agregar</button>`;$('#menuGrid').appendChild(c);});
+$('#menuGrid').onclick=e=>{if(e.target.dataset.id){const id=+e.target.dataset.id;cart[id]=(cart[id]||0)+1;updateCount();}};
+function updateCount(){$('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);} /* Auth modal */
+const authM=$('#authModal');$('#loginBtn').onclick=()=>authM.classList.add('active');$('#closeAuth').onclick=()=>authM.classList.remove('active');
+let loginMode=true;$('#toggleAuth').onclick=()=>{loginMode=!loginMode;$('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';$('#authSubmit').textContent=loginMode?'Entrar':'Registrar';$('#extra').style.display=loginMode?'none':'block';};
+/* Geocode */
+function toRad(d){return d*Math.PI/180;}const dist=(a,b,c,d)=>{const R=6371;const dLat=toRad(c-a),dLon=toRad(d-b);const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));};
+$('#geoBtn').onclick=async()=>{const addr=$('#addr').value.trim();if(!addr)return alert('Ingresa dirección');const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());if(!d[0])return alert('No encontrada');const {lat,lon}=d[0];const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;const fee=FEE(km);$('#distText').textContent=`${km} km • $${fmt(fee)}`;$('#map').style.display='block';if(!window._map){_map=L.map('map').setView([lat,lon],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);} _map.setView([lat,lon],13); if(window._mk)_map.removeLayer(_mk); _mk=L.marker([lat,lon]).addTo(_map);user={...user,lat:+lat,lng:+lon,km,fee,address:addr};};
+$('#authForm').onsubmit=e=>{e.preventDefault();const email=$('#email').value.trim().toLowerCase(),pass=$('#pass').value;if(loginMode){if(!users[email]||users[email].pass!==pass)return alert('Credenciales');user={...users[email]};releasePoints(user);}else{if(!user||!user.km)return alert('Confirma dirección');user={...user,email,pass,nombre:$('#name').value.trim(),apellido:$('#last').value.trim(),phone:$('#phone').value.trim(),points:0,pending:0};users[email]=user;saveUsers();}$('#userInfo').textContent=`Hola, ${user.nombre} (${user.points} pts)`;$('#pts').textContent=user.points;$('#ptsBox').style.display=user.points?'block':'none';authM.classList.remove('active');if($('#cartModal').classList.contains('wait-login')){$('#cartModal').classList.remove('wait-login');calc();$('#cartModal').classList.add('active');}};
+/* Cart modal */
+$('#cartBtn').onclick=()=>{renderCart();$('#cartModal').classList.add('active');};$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
+$('#cartItems').onclick=e=>{if(e.target.closest('.qty')){const id=+e.target.closest('.qty').dataset.id;if(e.target.classList.contains('inc'))cart[id]++;if(e.target.classList.contains('dec'))cart[id]=Math.max(0,cart[id]-1);if(!cart[id])delete cart[id];updateCount();renderCart();}};
+function renderCart(){const w=$('#cartItems');w.innerHTML='';let sub=0;for(const id in cart){const it=MENU.find(m=>m.id==id),q=cart[id];w.innerHTML+=`<div class='cart-item'><span>${it.name}</span><div class='qty' data-id='${id}'><button class='dec'>-</button><span>${q}</span><button class='inc'>+</button></div><span>$${fmt(it.price*q)}</span></div>`;sub+=it.price*q;}$('#sub').textContent=fmt(sub);calc();}
+$('input[name="delType"]').forEach(r=>r.onchange=e=>{delType=e.target.value;calc();});
+$('#couponBtn').onclick=e=>{e.preventDefault();const c=$('#coupon').value.trim().toUpperCase();code=CODE[c]?c:null;$('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';calc();};
+$('#redeem').onchange=e=>{redeem=e.target.checked;calc();};
+function calc(){const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;let del=0,km=0;if(delType==='delivery'&&user){del=user.fee;km=user.km;}$('#delRow').style.display=delType==='delivery'?'block':'none';$('#del').textContent=fmt(del);$('#km').textContent=km;const disc=code?Math.round(sub*CODE[code]):0;$('#discRow').style.display=disc?'block':'none';$('#disc').textContent=fmt(disc);if(!user||!user.points){redeem=false;$('#redeem').checked=false;}$('#redeem').disabled=!user||!user.points;const red=redeem?Math.min(user.points*VAL,sub+del-disc):0;$('#redRow').style.display=red?'block':'none';$('#red').textContent=fmt(red);const tot=sub+del-disc-red;$('#tot').textContent=fmt(tot);buildLink(tot,red);} 
+function buildLink(total,red){$('#checkout').onclick=e=>{if(!user){e.preventDefault();$('#cartModal').classList.remove('active');$('#cartModal').classList.add('wait-login');authM.classList.add('active');return;}if(total<=0){e.preventDefault();return;}const earn=Math.floor(total*RATE);user.pending=earn;user.pendingAt=Date.now();saveUsers();let msg=`Hola Mamma Maggi!%0APedido:%0A`;for(const id in cart){const it=MENU.find(m=>m.id==id);msg+=`${cart[id]} x ${it.name}%0A`;}msg+=`%0ATotal: $${fmt(total)}`;msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;};}
+</script>
+</body>
+</html>
