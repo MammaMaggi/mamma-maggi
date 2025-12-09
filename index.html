@@ -32,6 +32,17 @@ header h1{font-size:2.3rem;letter-spacing:2px}
 #cartBtn span{font-size:.8rem}
 #userInfo{font-size:.8rem;opacity:.8}
 
+/* BANNER HORARIO */
+#scheduleBanner{
+  width:100%;
+  background:#e63946;
+  color:white;
+  text-align:center;
+  padding:8px 0;
+  font-weight:700;
+  font-size:.9rem;
+}
+
 /* NAV */
 nav{
   text-align:center;
@@ -193,6 +204,10 @@ textarea{min-height:70px;resize:vertical}
   <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
 </header>
 
+<div id="scheduleBanner">
+  🕒 Horario: Mié–Sáb 18:00–23:00 • Dom 12:00–16:00
+</div>
+
 <nav>
   <a href="#top">Pedidos</a>
   <a href="#nosotros">Nosotros</a>
@@ -244,7 +259,7 @@ textarea{min-height:70px;resize:vertical}
 <section id="contacto" class="static-section">
   <h2>Contacto</h2>
   <p>📍 Sector Lérida con Javiera Carrera, Temuco.</p>
-  <p>⏰ Miércoles a sábado, de 18:00 a 22:00 hrs.</p>
+  <p>⏰ Horario: Miércoles a Sábado 18:00–23:00 y Domingo 12:00–16:00 hrs.</p>
   <p>📱 WhatsApp: <a href="https://wa.me/56949486579" target="_blank">+56 9 4948 6579</a></p>
   <p>📸 Instagram: <a href="https://www.instagram.com/mamma.maggi" target="_blank">@mamma.maggi</a></p>
 </section>
@@ -265,9 +280,9 @@ textarea{min-height:70px;resize:vertical}
       <input 
         id="phone" 
         placeholder="Teléfono (+569...)" 
-        required 
-        pattern="^(\+?56)?9\\d{8}$"
-        title="Debe ser un número chileno, por ejemplo +56912345678" 
+        required
+        pattern="^\+?56?\s?9\s?\d{4}\s?\d{4}$"
+        title="Ingresa un número chileno válido, ejemplo: +56964400283"
       />
       <input id="addr" placeholder="Dirección (Temuco)" required />
       <button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
@@ -354,6 +369,7 @@ const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 /* Storage */
 const users=JSON.parse(localStorage.getItem('users')||'{}');
 function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
+
 /* Points release check */
 function releasePoints(u){
   if(u.pending&&Date.now()-u.pendingAt>=300000){
@@ -363,7 +379,12 @@ function releasePoints(u){
   }
 }
 
-/* State */
+/* Normalizar teléfono (deja solo dígitos) */
+function normalizePhone(phone){
+  return phone.replace(/\D/g,'');
+}
+
+/* Estado */
 let user=null,cart={},delType='pickup',code=null,redeem=false;
 
 /* Render menú */
@@ -384,7 +405,7 @@ $('#menuGrid').onclick=e=>{
     const id=+e.target.dataset.id;
     cart[id]=(cart[id]||0)+1;
     updateCount();
-    renderCart(); // actualiza modal + carrito lateral
+    renderCart();
   }
 };
 
@@ -436,7 +457,7 @@ $('#geoBtn').onclick=async()=>{
   Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
 };
 
-/* Login / Registro mejorado */
+/* Login / Registro */
 $('#authForm').onsubmit=e=>{
   e.preventDefault();
   const email=$('#email').value.trim().toLowerCase();
@@ -467,7 +488,7 @@ $('#authForm').onsubmit=e=>{
       pass,
       nombre:$('#name').value.trim(),
       apellido:$('#last').value.trim(),
-      phone:$('#phone').value.trim(),
+      phone:normalizePhone($('#phone').value),
       points:0,
       pending:0
     };
@@ -574,6 +595,27 @@ $('#redeem').onchange=e=>{
   calc();
 };
 
+/* Función para saber si está abierto (mié-sáb 18-23, dom 12-16) */
+function isOpenNow(){
+  const now=new Date();
+  const day=now.getDay(); // 0=domingo
+  const hour=now.getHours();
+  const min=now.getMinutes();
+
+  // domingo 12-16
+  if(day===0){
+    return hour>=12 && (hour<16 || (hour===16 && min===0));
+  }
+
+  // miércoles=3, jueves=4, viernes=5, sábado=6 → 18-23
+  if(day>=3 && day<=6){
+    return hour>=18 && (hour<23 || (hour===23 && min===0));
+  }
+
+  // resto cerrado
+  return false;
+}
+
 function calc(){
   const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
   let del=0,km=0;
@@ -619,6 +661,13 @@ function buildLink(total,red){
       return;
     }
 
+    // verificar horario
+    if(!isOpenNow()){
+      e.preventDefault();
+      alert("Mamma Maggi está cerrado ahora.\nHorario:\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+      return;
+    }
+
     const comment = ($('#orderComment').value || '').trim();
 
     const earn=Math.floor(total*RATE);
@@ -643,5 +692,6 @@ function buildLink(total,red){
 </script>
 </body>
 </html>
+
 
 
