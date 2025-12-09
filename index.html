@@ -336,8 +336,13 @@ textarea{min-height:70px;resize:vertical}
     <label style="margin-left:.7rem;"><input type="radio" name="whenType" value="later"> Programar</label>
     <div id="scheduleFields" style="display:none;margin-top:.4rem;display:flex;gap:.4rem;flex-wrap:wrap;">
       <input type="date" id="schedDate" />
-      <input type="time" id="schedTime" />
+      <select id="schedTime">
+        <option value="">Selecciona una hora</option>
+      </select>
     </div>
+    <small id="scheduleHelp" style="display:none;font-size:.8rem;opacity:.8;">
+      Solo se muestran horarios disponibles según el día y el tiempo mínimo de preparación (25 min).
+    </small>
   </div>
 
   <div style="margin-top:.7rem">
@@ -404,6 +409,14 @@ const REWARDS=[
   {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
   {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
 ];
+
+/* Helpers fecha */
+function dateToYMD(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const da=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${da}`;
+}
 
 /* Storage */
 const users=JSON.parse(localStorage.getItem('users')||'{}');
@@ -706,7 +719,34 @@ $('#delGeoBtn').onclick=async()=>{
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   $('#scheduleFields').style.display = whenType==='later' ? 'flex' : 'none';
+  $('#scheduleHelp').style.display = whenType==='later' ? 'inline' : 'none';
+
+  if(whenType==='later'){
+    const schedDateInput = $('#schedDate');
+    const today = new Date();
+    const todayStr = dateToYMD(today);
+
+    // min = hoy
+    schedDateInput.setAttribute('min', todayStr);
+
+    if(!schedDateInput.value){
+      // Buscar próxima fecha abierta (dom o mié-sáb)
+      const next = new Date(today);
+      for(let i=0;i<14;i++){
+        const d = next.getDay();
+        if(d===0 || (d>=3 && d<=6)){
+          schedDateInput.value = dateToYMD(next);
+          break;
+        }
+        next.setDate(next.getDate()+1);
+      }
+    }
+    generateTimeOptions();
+  }
 });
+
+/* Cambios al seleccionar fecha programada */
+$('#schedDate').addEventListener('change', generateTimeOptions);
 
 /* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
 function isInSchedule(dateObj){
@@ -732,6 +772,75 @@ function isInSchedule(dateObj){
 function isOpenNow(){
   const now=new Date();
   return isInSchedule(now);
+}
+
+/* Generar opciones de hora cada 15 min según día y 25 min de margen */
+function generateTimeOptions(){
+  const dateStr = $('#schedDate').value;
+  const timeSelect = $('#schedTime');
+  const help = $('#scheduleHelp');
+  timeSelect.innerHTML = '<option value="">Selecciona una hora</option>';
+
+  if(!dateStr){
+    help.textContent = 'Selecciona primero un día.';
+    help.style.display = 'inline';
+    return;
+  }
+
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dateObj = new Date(y, m-1, d, 12, 0, 0); // medio día
+
+  const day = dateObj.getDay(); // 0=domingo
+  let startHour=null,endHour=null;
+
+  if(day===0){
+    // domingo
+    startHour=12; endHour=16;
+  }else if(day>=3 && day<=6){
+    // mié-sáb
+    startHour=18; endHour=23;
+  }else{
+    help.textContent = 'Ese día estamos cerrados. Elige un domingo o de miércoles a sábado.';
+    help.style.display = 'inline';
+    return;
+  }
+
+  const now = new Date();
+  const minWaitMs = 25*60*1000;
+  const minDate = new Date(now.getTime()+minWaitMs);
+  const todayStr = dateToYMD(now);
+  const isToday = (dateStr===todayStr);
+
+  let added=false;
+
+  for(let h=startHour; h<=endHour; h++){
+    for(let m=0;m<60;m+=15){
+      const hh = String(h).padStart(2,'0');
+      const mm = String(m).padStart(2,'0');
+      const dt = new Date(`${dateStr}T${hh}:${mm}:00`);
+
+      // asegurar que está dentro del rango de horario (por seguridad)
+      if(!isInSchedule(dt)) continue;
+
+      // si es hoy, respetar tiempo mínimo de espera
+      if(isToday && dt<minDate) continue;
+
+      const label = `${hh}:${mm}`;
+      const opt = document.createElement('option');
+      opt.value = `${hh}:${mm}`;
+      opt.textContent = label;
+      timeSelect.appendChild(opt);
+      added=true;
+    }
+  }
+
+  if(!added){
+    help.textContent = 'No hay horarios disponibles para ese día considerando el tiempo mínimo de preparación (25 min).';
+    help.style.display = 'inline';
+  }else{
+    help.textContent = 'Solo se muestran horarios disponibles según el día y el tiempo mínimo de preparación (25 min).';
+    help.style.display = 'inline';
+  }
 }
 
 function calc(){
@@ -819,7 +928,6 @@ function buildLink(total){
       }
     }
 
-    // Validación horario según tipo de pedido + tiempo mínimo 25 min
     const now = new Date();
     const minWaitMs = 25*60*1000;
     const minDate = new Date(now.getTime()+minWaitMs);
@@ -909,6 +1017,15 @@ function buildLink(total){
     e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
   };
 }
+
+/* Inicial: setear min de fecha cuando cargue la página */
+window.addEventListener('DOMContentLoaded', ()=>{
+  const schedDateInput = $('#schedDate');
+  if(schedDateInput){
+    const todayStr = dateToYMD(new Date());
+    schedDateInput.setAttribute('min', todayStr);
+  }
+});
 </script>
 </body>
 </html>
