@@ -6,6 +6,11 @@
 <title>Mamma Maggi | Pedidos Online</title>
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
 <style>
 :root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -64,26 +69,25 @@ nav a:hover{opacity:1;text-decoration:underline}
   grid-template-columns:minmax(0,2fr) 320px;
   gap:1.5rem;
   align-items:flex-start;
-  justify-content:center;
 }
 .main-layout section{
   max-width:100%;
-  margin:0 auto;
+  margin:0;
   padding:0;
 }
 section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
 
-/* CARDS MENÚ */
+/* CARDS MENÚ (centrado visualmente) */
 .menu-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
   gap:1.5rem;
-  max-width:900px;
-  margin:0 auto;           /* centro el bloque de pizzas */
+  justify-items:center;
 }
 .card{
   background:var(--card);border-radius:8px;
   padding:1rem;display:flex;flex-direction:column;gap:.6rem;
+  width:100%;max-width:320px;
 }
 .price{font-weight:700}
 .card button{
@@ -203,20 +207,25 @@ textarea{min-height:70px;resize:vertical}
 }
 
 /* ADMIN PANEL */
-#admin{display:none}
-#adminTable{
-  width:100%;
-  border-collapse:collapse;
-  font-size:.82rem;
-  margin-top:.8rem;
+#adminContent{
+  margin-top:1rem;
 }
-#adminTable th,#adminTable td{
+.admin-order{
   border:1px solid #333;
-  padding:.35rem;
-  vertical-align:top;
+  border-radius:6px;
+  padding:.6rem .8rem;
+  margin-bottom:.6rem;
+  font-size:.85rem;
 }
-#adminTable th{
-  background:#222;
+.admin-order-header{
+  display:flex;
+  justify-content:space-between;
+  gap:.5rem;
+  margin-bottom:.3rem;
+  font-weight:700;
+}
+.admin-order-body{
+  opacity:.9;
 }
 
 /* RESPONSIVE */
@@ -249,7 +258,7 @@ textarea{min-height:70px;resize:vertical}
   <a href="#club">Club Maggi</a>
   <a href="#eventos">Eventos</a>
   <a href="#contacto">Contacto</a>
-  <a href="#admin" id="adminLink" style="display:none">Admin</a>
+  <a href="#admin">Admin</a>
 </nav>
 
 <a id="top"></a>
@@ -280,7 +289,7 @@ textarea{min-height:70px;resize:vertical}
 <section id="club" class="static-section">
   <h2>Club Maggi</h2>
   <p>Por cada compra acumulas puntos en tu cuenta. Luego, puedes canjearlos por productos especiales del menú.</p>
-  <p>Por ejemplo: Tiramisú o Palitos de Ajo / Queso, según los puntos que tengas acumulados.</p>
+  <p>Ejemplo: Tiramisú o Palitos de Ajo / Queso, según los puntos que tengas acumulados.</p>
 </section>
 
 <!-- SECCIÓN EVENTOS -->
@@ -301,10 +310,16 @@ textarea{min-height:70px;resize:vertical}
 
 <!-- PANEL ADMIN -->
 <section id="admin" class="static-section">
-  <h2>Panel Admin (Mamma Maggi)</h2>
-  <p style="font-size:.85rem;opacity:.8;">Visible sólo para correos de administración.</p>
-  <div id="adminSummary" style="font-size:.9rem;margin-top:.4rem;"></div>
-  <div id="adminOrders"></div>
+  <h2>Panel Admin</h2>
+  <p style="font-size:.9rem;opacity:.8;">Ingresa la clave de administrador para ver el flujo de pedidos.</p>
+  <div id="adminLogin">
+    <input type="password" id="adminPass" placeholder="Clave admin" />
+    <button class="btn" id="adminEnter" style="margin-top:.4rem;">Entrar</button>
+  </div>
+  <div id="adminContent" style="display:none">
+    <button class="btn" id="refreshOrders" style="margin-bottom:.7rem;">Actualizar pedidos</button>
+    <div id="ordersList"></div>
+  </div>
 </section>
 
 <!-- Auth Modal -->
@@ -363,10 +378,11 @@ textarea{min-height:70px;resize:vertical}
     <label><strong>¿Para cuándo?</strong></label><br/>
     <label><input type="radio" name="whenType" value="now" checked> Lo antes posible (hoy)</label>
     <label style="margin-left:.7rem;"><input type="radio" name="whenType" value="later"> Programar</label>
-    <div id="scheduleFields" style="display:none;margin-top:.4rem;display:flex;gap:.4rem;flex-wrap:wrap;">
-      <input type="date" id="schedDate" />
-      <input type="time" id="schedTime" step="900" />
+    <div id="scheduleFields" style="display:none;margin-top:.4rem;gap:.4rem;flex-wrap:wrap;">
+      <select id="schedDate"></select>
+      <select id="schedTime"></select>
     </div>
+    <small id="scheduleHint" style="font-size:.8rem;opacity:.8;"></small>
   </div>
 
   <div style="margin-top:.7rem">
@@ -398,14 +414,10 @@ textarea{min-height:70px;resize:vertical}
 </div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module">
-/* ==================== FIREBASE ==================== */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-  getFirestore, collection, addDoc, serverTimestamp,
-  query, orderBy, limit, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
+<script>
+// ===========================
+//  FIREBASE INIT (FIRESTORE)
+// ===========================
 const firebaseConfig = {
   apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
   authDomain: "mamma-maggi.firebaseapp.com",
@@ -415,16 +427,12 @@ const firebaseConfig = {
   appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
   measurementId: "G-L8ZT1KN1YC"
 };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-/* correos que verán el panel admin */
-const ADMIN_EMAILS = [
-  "admin@mammamaggi.cl"  // <-- cámbialo por el correo que quieras usar como admin
-];
-
-/* ==================== APP CLIENTE ==================== */
+// ===========================
+//  DATOS Y CONSTANTES
+// ===========================
 const MENU=[
   {id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
   {id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
@@ -449,18 +457,20 @@ const MENU=[
 const ORIGIN=[-38.731229, -72.626507];
 const CODE={MAGGI10:.1};
 const PHONE='56949486579';
-const RATE=.001; // 1 punto por cada ~$1000
+const RATE=.001; // regla puntos: 1 punto por cada $1000 aprox
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
 const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 
-/* Recompensas canjeables con puntos (usa IDs de MENU) */
+// Recompensas canjeables con puntos (usa IDs de MENU)
 const REWARDS=[
   {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
-  {id:17,pts:8 ,label:'Canjear Palitos de Ajo (8 pts)'},
-  {id:18,pts:8 ,label:'Canjear Palitos de Queso (8 pts)'},
+  {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
+  {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
 ];
 
-/* Storage local (perfil usuario) */
+const ADMIN_PASS = "mamma2025"; // puedes cambiar esta clave
+
+/* Storage local para usuarios (solo correos / perfil básico) */
 const users=JSON.parse(localStorage.getItem('users')||'{}');
 function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
 
@@ -481,12 +491,11 @@ function normalizePhone(phone){
 /* Estado */
 let user=null,
     cart={},
-    cartRewards={}, // productos canjeados
+    cartRewards={}, // productos canjeados con puntos (gratis)
     delType='pickup',
     code=null,
     whenType='now', // 'now' o 'later'
     orderDelivery=null; // {address,km,fee,lat,lng}
-let lastSummary={subtotal:0,delivery:0,discount:0,total:0};
 
 /* Render menú */
 MENU.forEach(i=>{
@@ -560,36 +569,17 @@ $('#geoBtn').onclick=async()=>{
   $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
   $('#map').style.display='block';
   if(!window._map){
-    window._map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
+    _map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
   }
-  window._map.setView([lat,lon],13);
-  if(window._mk)window._map.removeLayer(window._mk);
-  window._mk=L.marker([lat,lon]).addTo(window._map);
+  _map.setView([lat,lon],13);
+  if(window._mk)_map.removeLayer(_mk);
+  _mk=L.marker([lat,lon]).addTo(_map);
   if (!user) user = {};
   Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
 };
 
-/* Helpers admin */
-function isAdmin(u){
-  return !!(u && ADMIN_EMAILS.includes((u.email||'').toLowerCase()));
-}
-
 /* Actualizar UI usuario */
-let ordersUnsub=null;
-function updateAdminVisibility(){
-  const panel=$('#admin');
-  const link=$('#adminLink');
-  if(isAdmin(user)){
-    panel.style.display='block';
-    link.style.display='inline';
-    subscribeOrders();
-  }else{
-    panel.style.display='none';
-    link.style.display='none';
-  }
-}
-
 function updateUserUI(){
   if(user){
     $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points||0} pts)`;
@@ -601,7 +591,6 @@ function updateUserUI(){
     $('#ptsBox').style.display='none';
     $('#rewardsList').innerHTML='';
   }
-  updateAdminVisibility();
 }
 
 /* Login / Registro */
@@ -781,8 +770,115 @@ $('#delGeoBtn').onclick=async()=>{
 /* CUÁNDO QUIERES EL PEDIDO (now / later) */
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
-  $('#scheduleFields').style.display = whenType==='later' ? 'flex' : 'none';
+  if(whenType==='later'){
+    $('#scheduleFields').style.display='flex';
+    buildScheduleOptions();
+  }else{
+    $('#scheduleFields').style.display='none';
+    $('#scheduleHint').textContent='';
+  }
 });
+
+/* Definir ventanas de horario por día */
+function getOpenWindowsForDay(dayIdx){
+  // 0=domingo, 3=mié,4=jue,5=vie,6=sáb
+  if(dayIdx===0) return [{start:12,end:16}];  // 12:00-16:00
+  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}]; // 18:00-23:00
+  return [];
+}
+
+/* Construye lista de fechas y horarios (cada 15 min) */
+function buildScheduleOptions(){
+  const dateSel = $('#schedDate');
+  const timeSel = $('#schedTime');
+  dateSel.innerHTML='';
+  timeSel.innerHTML='';
+
+  const now = new Date();
+
+  for(let i=0;i<7;i++){
+    const d = new Date();
+    d.setDate(now.getDate()+i);
+    const windows = getOpenWindowsForDay(d.getDay());
+    if(!windows.length) continue;
+
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const value = `${yyyy}-${mm}-${dd}`;
+    const label = d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric', month:'short'});
+
+    const opt=document.createElement('option');
+    opt.value=value;
+    opt.textContent=label;
+    dateSel.appendChild(opt);
+  }
+
+  if(!dateSel.options.length){
+    dateSel.innerHTML='<option value="">Sin días disponibles</option>';
+    timeSel.innerHTML='<option value="">Sin horarios</option>';
+    $('#scheduleHint').textContent='No hay días disponibles para programar.';
+    return;
+  }
+
+  dateSel.onchange = rebuildTimeOptions;
+  rebuildTimeOptions();
+}
+
+/* Recalcular horarios disponibles de acuerdo a la fecha seleccionada */
+function rebuildTimeOptions(){
+  const dateSel = $('#schedDate');
+  const timeSel = $('#schedTime');
+  const val = dateSel.value;
+  timeSel.innerHTML='';
+
+  if(!val){
+    const o=document.createElement('option');
+    o.value='';
+    o.textContent='Selecciona fecha';
+    timeSel.appendChild(o);
+    return;
+  }
+
+  const [y,m,d]=val.split('-').map(Number);
+  const dtBase = new Date(y,m-1,d);
+  const windows = getOpenWindowsForDay(dtBase.getDay());
+  if(!windows.length){
+    const o=document.createElement('option');
+    o.value='';
+    o.textContent='Sin horarios';
+    timeSel.appendChild(o);
+    return;
+  }
+
+  const now = new Date();
+  const minWaitMs = 25*60*1000;
+  const minDate = new Date(now.getTime()+minWaitMs);
+
+  windows.forEach(win=>{
+    for(let h=win.start; h<win.end; h++){
+      for(let min=0; min<60; min+=15){
+        const slot = new Date(y,m-1,d,h,min,0);
+        const value = `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+        const o=document.createElement('option');
+        o.value=value;
+
+        let label = `${value}`;
+        if(slot < minDate && slot.toDateString()===now.toDateString()){
+          o.disabled=true;
+          label += ' (no disponible)';
+        }
+        o.textContent=label;
+        timeSel.appendChild(o);
+      }
+    }
+  });
+
+  const firstEnabled = Array.from(timeSel.options).find(o=>!o.disabled && o.value);
+  if(firstEnabled) timeSel.value = firstEnabled.value;
+
+  $('#scheduleHint').textContent='Solo se muestran horarios dentro del horario de atención. Mínimo 25 min de anticipación.';
+}
 
 /* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
 function isInSchedule(dateObj){
@@ -800,7 +896,6 @@ function isInSchedule(dateObj){
     return hour>=18 && (hour<23 || (hour===23 && min===0));
   }
 
-  // resto cerrado
   return false;
 }
 
@@ -829,8 +924,6 @@ function calc(){
 
   const tot=sub+del-disc;
   $('#tot').textContent=fmt(tot);
-
-  lastSummary={subtotal:sub,delivery:del,discount:disc,total:tot};
   buildLink(tot);
 } 
 
@@ -873,249 +966,256 @@ $('#rewardsList').onclick=e=>{
   renderCart();
 };
 
-/* ====== Guardar pedido en Firestore ====== */
-async function saveOrderToFirestore(total, scheduledDateTime){
-  if(!db || !user) return;
-  try{
-    const items=[];
-    for(const id in cart){
-      const it=MENU.find(m=>m.id==id);
-      items.push({
-        id: Number(id),
-        name: it.name,
-        qty: cart[id],
-        price: it.price,
-        type: 'paid'
-      });
-    }
-    for(const rid in cartRewards){
-      const it=MENU.find(m=>m.id==rid);
-      items.push({
-        id: Number(rid),
-        name: it.name,
-        qty: cartRewards[rid],
-        price: 0,
-        type: 'reward'
-      });
-    }
-
-    const order={
-      items,
-      subtotal:lastSummary.subtotal,
-      deliveryFee:lastSummary.delivery,
-      discount:lastSummary.discount,
-      total,
-      deliveryType:delType,
-      scheduled: whenType==='later',
-      scheduledFor: scheduledDateTime ? scheduledDateTime.toISOString() : null,
-      createdAt: serverTimestamp(),
-      status:'pendiente',
-      customer:{
-        name:user.nombre,
-        lastName:user.apellido,
-        email:user.email,
-        phone:user.phone,
-        address:user.address || null
-      },
-      deliveryAddress: delType==='delivery' && orderDelivery ? orderDelivery.address : null,
-      comment: ($('#orderComment').value || '').trim()
-    };
-
-    await addDoc(collection(db,"orders"),order);
-  }catch(err){
-    console.error("Error guardando pedido",err);
-    alert("Tu pedido se envió a WhatsApp, pero no se pudo guardar en el panel admin.");
-  }
-}
-
-/* ====== Construir enlace de WhatsApp + validaciones ====== */
+/* Construir enlace de WhatsApp + guardar pedido en Firestore */
 function buildLink(total){
-  $('#checkout').onclick=async e=>{
-    if(!user){
+  $('#checkout').onclick = async e => {
+    if (!user) {
       e.preventDefault();
       $('#cartModal').classList.remove('active');
       $('#cartModal').classList.add('wait-login');
       authM.classList.add('active');
       return;
     }
-    if(total<=0){
+    if (total <= 0) {
       e.preventDefault();
+      alert("Tu pedido no tiene productos.");
       return;
     }
 
-    // Validación delivery: si eligió delivery, debe haber dirección de entrega confirmada
-    if(delType==='delivery'){
-      if(!orderDelivery || !orderDelivery.address){
+    // Validación delivery
+    if (delType === 'delivery') {
+      if (!orderDelivery || !orderDelivery.address) {
         e.preventDefault();
-        alert("Confirma la dirección de entrega para calcular el delivery.");
+        alert("Debes confirmar la dirección de entrega.");
         return;
       }
     }
 
-    // Validación horario según tipo de pedido + tiempo mínimo 25 min
+    const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
+    const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
+
+    // Validación tiempo mínimo 25 min
     const now = new Date();
-    const minWaitMs = 25*60*1000;
-    const minDate = new Date(now.getTime()+minWaitMs);
+    const minWaitMs = 25 * 60 * 1000;
+    const minDate = new Date(now.getTime() + minWaitMs);
+    let scheduledDate = null;
 
-    let scheduledDateTime=null;
+    if (whenType === 'later') {
+      const dVal = $('#schedDate').value;
+      const tVal = $('#schedTime').value;
 
-    if(whenType==='now'){
-      if(!isOpenNow()){
+      if (!dVal || !tVal) {
         e.preventDefault();
-        alert("Mamma Maggi está cerrado ahora.\nHorario:\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+        alert("Selecciona fecha y hora para programar tu pedido.");
         return;
       }
-      // para "ahora" sólo respetamos espera mínima en el mensaje
-    }else{
-      const dVal=$('#schedDate').value;
-      const tVal=$('#schedTime').value;
-      if(!dVal || !tVal){
+
+      const [y,m,d] = dVal.split('-').map(Number);
+      const [hh,mm] = tVal.split(':').map(Number);
+      const dt = new Date(y,m-1,d,hh,mm,0);
+      scheduledDate = dt;
+
+      if (dt < minDate) {
         e.preventDefault();
-        alert("Elige fecha y hora para programar tu pedido.");
+        alert("El pedido debe programarse al menos 25 minutos más tarde.");
         return;
       }
-      const dt = new Date(`${dVal}T${tVal}:00`);
-      if(isNaN(dt.getTime())){
-        e.preventDefault();
-        alert("Fecha/hora inválida.");
-        return;
-      }
-      if(dt < minDate){
-        e.preventDefault();
-        alert("El tiempo mínimo de espera es de 25 minutos. Elige una hora más adelante.");
-        return;
-      }
-      if(!isInSchedule(dt)){
+      if (!isInSchedule(dt)) {
         e.preventDefault();
         alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
         return;
       }
-      scheduledDateTime=dt;
+    } else {
+      if (!isOpenNow()) {
+        e.preventDefault();
+        alert("Estamos cerrados ahora.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+        return;
+      }
     }
 
     const comment = ($('#orderComment').value || '').trim();
 
-    // puntos a liberar
+    // Puntos ganados
     const earn=Math.floor(total*RATE);
     user.pending=earn;
     user.pendingAt=Date.now();
     users[user.email]=user;
     saveUsers();
 
-    // Guardar en Firestore
-    await saveOrderToFirestore(total, scheduledDateTime);
+    // ============================
+    //   GUARDAR PEDIDO EN FIRESTORE
+    // ============================
+    const items = Object.entries(cart).map(([id,q])=>{
+      const it = MENU.find(m=>m.id==id);
+      return {
+        id:+id,
+        name:it?.name || '',
+        qty:q,
+        unitPrice:it?.price || 0,
+        lineTotal:(it?.price || 0)*q
+      };
+    });
 
-    let msg=`Hola Mamma Maggi!%0APedido:%0A`;
-    // pagados
-    for(const id in cart){
-      const it=MENU.find(m=>m.id==id);
-      msg+=`${cart[id]} x ${it.name}%0A`;
+    const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
+      const it = MENU.find(m=>m.id==id);
+      return {
+        id:+id,
+        name:it?.name || '',
+        qty:q,
+        reward:true
+      };
+    });
+
+    const orderData = {
+      items,
+      rewards:rewardsItems,
+      subtotal:sub,
+      deliveryCost:delCost,
+      total,
+      deliveryType:delType,
+      deliveryAddress:delType==='delivery' && orderDelivery ? orderDelivery.address : null,
+      deliveryKm:delType==='delivery' && orderDelivery ? orderDelivery.km : null,
+      comment,
+      whenType,
+      scheduledAt: scheduledDate ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      user:{
+        email:user.email,
+        nombre:user.nombre,
+        apellido:user.apellido,
+        phone:user.phone,
+        address:user.address || null
+      },
+      status:'pendiente',
+      source:'web'
+    };
+
+    try{
+      await db.collection('orders').add(orderData);
+    }catch(err){
+      console.error('Error guardando pedido:',err);
+      // No bloqueamos el envío de WhatsApp si falla Firestore
     }
-    // recompensas
-    for(const rid in cartRewards){
-      const it=MENU.find(m=>m.id==rid);
-      msg+=`${cartRewards[rid]} x ${it.name} (canje puntos)%0A`;
+
+    // ============================
+    //   CONSTRUCCIÓN DEL MENSAJE
+    // ============================
+    let msg = `Hola Mamma Maggi!%0APedido:%0A`;
+
+    // Productos normales
+    for (const id in cart) {
+      const it = MENU.find(m => m.id == id);
+      msg += `${cart[id]} x ${it.name}%0A`;
     }
 
-    msg+=`%0ATotal: $${fmt(total)}`;
-
-    if(whenType==='later'){
-      const dVal=$('#schedDate').value;
-      const tVal=$('#schedTime').value;
-      msg+=`%0APara: ${dVal} ${tVal}`;
-    }else{
-      msg+=`%0APara: lo antes posible (hoy)`;
+    // Recompensas
+    for (const rid in cartRewards) {
+      const it = MENU.find(m => m.id == rid);
+      msg += `${cartRewards[rid]} x ${it.name} (canje)%0A`;
     }
 
-    // tipo de entrega y dirección
-    if(delType==='delivery'){
-      msg+=`%0AModalidad: Delivery`;
-      msg+=`%0ADirección entrega: ${orderDelivery?.address || ''}`;
-    }else{
-      msg+=`%0AModalidad: Retiro en local`;
-      if(user.address){
-        msg+=`%0ADirección registrada cliente: ${user.address}`;
-      }
+    // Total
+    msg += `%0ATotal: $${fmt(total)}`;
+
+    // Fecha / hora
+    if (whenType === 'later' && scheduledDate) {
+      const dVal = $('#schedDate').value;
+      const tVal = $('#schedTime').value;
+      msg += `%0APara: ${dVal} ${tVal}`;
+    } else {
+      msg += `%0APara: Lo antes posible (hoy)`;
     }
 
-    // tiempo mínimo de espera
-    msg+=`%0ATiempo de espera mínimo: 25 minutos`;
-
-    if(comment){
-      msg+=`%0AComentario: ${comment}`;
+    // Tipo de entrega
+    if (delType === 'delivery') {
+      msg += `%0AModalidad: Delivery`;
+      msg += `%0AEntrega: ${orderDelivery?.address || ''}`;
+    } else {
+      msg += `%0AModalidad: Retiro en local`;
     }
-    msg+=`%0ATel: ${user.phone || ''}`;
 
-    e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
+    // Tiempo mínimo de espera
+    msg += `%0ATiempo de espera mínimo: 25 minutos`;
+
+    // Comentario opcional
+    if (comment) msg += `%0AComentario: ${comment}`;
+
+    // Teléfono del cliente
+    msg += `%0ATeléfono cliente: ${user.phone || ''}`;
+
+    const waURL = `https://wa.me/${PHONE}?text=${msg}`;
+    e.currentTarget.href = waURL;
   };
 }
 
-/* ====== PANEL ADMIN: suscripción a pedidos ====== */
-function subscribeOrders(){
-  if(!db || ordersUnsub) return;
-  const q = query(collection(db,"orders"), orderBy("createdAt","desc"), limit(50));
-  ordersUnsub = onSnapshot(q,snap=>{
-    const orders = snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderAdminOrders(orders);
-  });
-}
-
-function renderAdminOrders(orders){
-  const cont=$('#adminOrders');
-  const sum=$('#adminSummary');
-  if(!orders.length){
-    cont.innerHTML='<p>No hay pedidos todavía.</p>';
-    sum.textContent='';
-    return;
+// ===========================
+//   PANEL ADMIN (LECTURA)
+// ===========================
+$('#adminEnter').onclick = ()=>{
+  const val = $('#adminPass').value;
+  if(val === ADMIN_PASS){
+    $('#adminLogin').style.display='none';
+    $('#adminContent').style.display='block';
+    loadOrders();
+  }else{
+    alert('Clave incorrecta');
   }
+};
 
-  let totalVentas=0;
-  orders.forEach(o=>{ totalVentas += (o.total||0); });
+$('#refreshOrders').onclick = loadOrders;
 
-  sum.textContent=`Pedidos recientes: ${orders.length} • Ventas totales aprox: $${fmt(totalVentas)}`;
+function loadOrders(){
+  const container = $('#ordersList');
+  container.innerHTML='Cargando pedidos...';
 
-  let html=`<table id="adminTable">
-    <thead>
-      <tr>
-        <th>Fecha</th>
-        <th>Cliente</th>
-        <th>Detalle</th>
-        <th>Entrega</th>
-        <th>Total</th>
-      </tr>
-    </thead><tbody>`;
+  db.collection('orders')
+    .orderBy('createdAt','desc')
+    .limit(50)
+    .get()
+    .then(snap=>{
+      if(snap.empty){
+        container.innerHTML='<p style="font-size:.9rem;opacity:.8;">No hay pedidos registrados.</p>';
+        return;
+      }
+      container.innerHTML='';
+      snap.forEach(doc=>{
+        const data = doc.data();
+        const created = data.createdAt ? data.createdAt.toDate() : null;
+        const fecha = created ? created.toLocaleString('es-CL') : '---';
 
-  orders.forEach(o=>{
-    const created = o.createdAt && o.createdAt.toDate ? o.createdAt.toDate().toLocaleString('es-CL') : '';
-    const sched = o.scheduled && o.scheduledFor ? `<br><strong>Programado:</strong> ${new Date(o.scheduledFor).toLocaleString('es-CL')}` : '';
-    const cust  = o.customer || {};
-    const itemsText = (o.items||[]).map(it=>`${it.qty} x ${it.name}${it.type==='reward'?' (canje)':''}`).join('<br>');
-    const entrega = o.deliveryType==='delivery'
-      ? `Delivery<br>${o.deliveryAddress||''}<br>Delivery: $${fmt(o.deliveryFee||0)}`
-      : `Retiro en local`;
-
-    html+=`<tr>
-      <td>${created}${sched}</td>
-      <td>${cust.name||''} ${cust.lastName||''}<br>${cust.phone||''}</td>
-      <td>${itemsText}</td>
-      <td>${entrega}</td>
-      <td>$${fmt(o.total||0)}</td>
-    </tr>`;
-  });
-
-  html+='</tbody></table>';
-  cont.innerHTML=html;
+        const div = document.createElement('div');
+        div.className='admin-order';
+        div.innerHTML=`
+          <div class="admin-order-header">
+            <span>${data.user?.nombre || 'Cliente'}</span>
+            <span>${fecha}</span>
+          </div>
+          <div class="admin-order-body">
+            <p><strong>Total:</strong> $${fmt(data.total || 0)}</p>
+            <p><strong>Modalidad:</strong> ${data.deliveryType==='delivery'?'Delivery':'Retiro'}</p>
+            ${data.deliveryAddress ? `<p><strong>Entrega:</strong> ${data.deliveryAddress}</p>`:''}
+            <p><strong>Estado:</strong> ${data.status || 'pendiente'}</p>
+            <p><strong>Items:</strong></p>
+            <ul style="margin-left:1rem;">
+              ${ (data.items||[]).map(it=>`<li>${it.qty} x ${it.name}</li>`).join('') }
+              ${ (data.rewards||[]).map(it=>`<li>${it.qty} x ${it.name} (canje)</li>`).join('') }
+            </ul>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    })
+    .catch(err=>{
+      console.error(err);
+      container.innerHTML='<p style="color:#f88;">Error cargando pedidos.</p>';
+    });
 }
 
-/* ==== al cargar, intentar restaurar usuario activo (opcional) ==== */
-(function restore(){
-  // si quieres restaurar automáticamente el último usuario, podríamos guardar aparte;
-  // por ahora sólo se deja quieto.
-})();
+// ===========================
+//   INICIO
+// ===========================
+updateUserUI();
 </script>
 </body>
 </html>
 
-</script>
-</body>
-</html>
