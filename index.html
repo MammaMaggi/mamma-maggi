@@ -64,10 +64,11 @@ nav a:hover{opacity:1;text-decoration:underline}
   grid-template-columns:minmax(0,2fr) 320px;
   gap:1.5rem;
   align-items:flex-start;
+  justify-content:center;
 }
 .main-layout section{
   max-width:100%;
-  margin:0;
+  margin:0 auto;
   padding:0;
 }
 section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
@@ -77,6 +78,8 @@ section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
   gap:1.5rem;
+  max-width:900px;
+  margin:0 auto;           /* centro el bloque de pizzas */
 }
 .card{
   background:var(--card);border-radius:8px;
@@ -199,6 +202,23 @@ textarea{min-height:70px;resize:vertical}
   border-radius:4px;
 }
 
+/* ADMIN PANEL */
+#admin{display:none}
+#adminTable{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.82rem;
+  margin-top:.8rem;
+}
+#adminTable th,#adminTable td{
+  border:1px solid #333;
+  padding:.35rem;
+  vertical-align:top;
+}
+#adminTable th{
+  background:#222;
+}
+
 /* RESPONSIVE */
 @media(max-width:800px){
   .main-layout{
@@ -229,6 +249,7 @@ textarea{min-height:70px;resize:vertical}
   <a href="#club">Club Maggi</a>
   <a href="#eventos">Eventos</a>
   <a href="#contacto">Contacto</a>
+  <a href="#admin" id="adminLink" style="display:none">Admin</a>
 </nav>
 
 <a id="top"></a>
@@ -276,6 +297,14 @@ textarea{min-height:70px;resize:vertical}
   <p>⏰ Horario: Miércoles a Sábado 18:00–23:00 y Domingo 12:00–16:00 hrs.</p>
   <p>📱 WhatsApp: <a href="https://wa.me/56949486579" target="_blank">+56 9 4948 6579</a></p>
   <p>📸 Instagram: <a href="https://www.instagram.com/mamma.maggi" target="_blank">@mamma.maggi</a></p>
+</section>
+
+<!-- PANEL ADMIN -->
+<section id="admin" class="static-section">
+  <h2>Panel Admin (Mamma Maggi)</h2>
+  <p style="font-size:.85rem;opacity:.8;">Visible sólo para correos de administración.</p>
+  <div id="adminSummary" style="font-size:.9rem;margin-top:.4rem;"></div>
+  <div id="adminOrders"></div>
 </section>
 
 <!-- Auth Modal -->
@@ -336,13 +365,8 @@ textarea{min-height:70px;resize:vertical}
     <label style="margin-left:.7rem;"><input type="radio" name="whenType" value="later"> Programar</label>
     <div id="scheduleFields" style="display:none;margin-top:.4rem;display:flex;gap:.4rem;flex-wrap:wrap;">
       <input type="date" id="schedDate" />
-      <select id="schedTime">
-        <option value="">Selecciona una hora</option>
-      </select>
+      <input type="time" id="schedTime" step="900" />
     </div>
-    <small id="scheduleHelp" style="display:none;font-size:.8rem;opacity:.8;">
-      Solo se muestran horarios disponibles según el día y el tiempo mínimo de preparación (25 min).
-    </small>
   </div>
 
   <div style="margin-top:.7rem">
@@ -374,7 +398,33 @@ textarea{min-height:70px;resize:vertical}
 </div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
+<script type="module">
+/* ==================== FIREBASE ==================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { 
+  getFirestore, collection, addDoc, serverTimestamp,
+  query, orderBy, limit, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
+  authDomain: "mamma-maggi.firebaseapp.com",
+  projectId: "mamma-maggi",
+  storageBucket: "mamma-maggi.firebasestorage.app",
+  messagingSenderId: "148248596670",
+  appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
+  measurementId: "G-L8ZT1KN1YC"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+/* correos que verán el panel admin */
+const ADMIN_EMAILS = [
+  "admin@mammamaggi.cl"  // <-- cámbialo por el correo que quieras usar como admin
+];
+
+/* ==================== APP CLIENTE ==================== */
 const MENU=[
   {id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
   {id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
@@ -399,26 +449,18 @@ const MENU=[
 const ORIGIN=[-38.731229, -72.626507];
 const CODE={MAGGI10:.1};
 const PHONE='56949486579';
-const RATE=.001; // regla puntos: 1 punto por cada $1000 aprox
+const RATE=.001; // 1 punto por cada ~$1000
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
 const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 
 /* Recompensas canjeables con puntos (usa IDs de MENU) */
 const REWARDS=[
   {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
-  {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
-  {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
+  {id:17,pts:8 ,label:'Canjear Palitos de Ajo (8 pts)'},
+  {id:18,pts:8 ,label:'Canjear Palitos de Queso (8 pts)'},
 ];
 
-/* Helpers fecha */
-function dateToYMD(d){
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,'0');
-  const da=String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${da}`;
-}
-
-/* Storage */
+/* Storage local (perfil usuario) */
 const users=JSON.parse(localStorage.getItem('users')||'{}');
 function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
 
@@ -439,11 +481,12 @@ function normalizePhone(phone){
 /* Estado */
 let user=null,
     cart={},
-    cartRewards={}, // productos canjeados con puntos (gratis)
+    cartRewards={}, // productos canjeados
     delType='pickup',
     code=null,
     whenType='now', // 'now' o 'later'
     orderDelivery=null; // {address,km,fee,lat,lng}
+let lastSummary={subtotal:0,delivery:0,discount:0,total:0};
 
 /* Render menú */
 MENU.forEach(i=>{
@@ -517,17 +560,36 @@ $('#geoBtn').onclick=async()=>{
   $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
   $('#map').style.display='block';
   if(!window._map){
-    _map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
+    window._map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
   }
-  _map.setView([lat,lon],13);
-  if(window._mk)_map.removeLayer(_mk);
-  _mk=L.marker([lat,lon]).addTo(_map);
+  window._map.setView([lat,lon],13);
+  if(window._mk)window._map.removeLayer(window._mk);
+  window._mk=L.marker([lat,lon]).addTo(window._map);
   if (!user) user = {};
   Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
 };
 
+/* Helpers admin */
+function isAdmin(u){
+  return !!(u && ADMIN_EMAILS.includes((u.email||'').toLowerCase()));
+}
+
 /* Actualizar UI usuario */
+let ordersUnsub=null;
+function updateAdminVisibility(){
+  const panel=$('#admin');
+  const link=$('#adminLink');
+  if(isAdmin(user)){
+    panel.style.display='block';
+    link.style.display='inline';
+    subscribeOrders();
+  }else{
+    panel.style.display='none';
+    link.style.display='none';
+  }
+}
+
 function updateUserUI(){
   if(user){
     $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points||0} pts)`;
@@ -539,6 +601,7 @@ function updateUserUI(){
     $('#ptsBox').style.display='none';
     $('#rewardsList').innerHTML='';
   }
+  updateAdminVisibility();
 }
 
 /* Login / Registro */
@@ -719,34 +782,7 @@ $('#delGeoBtn').onclick=async()=>{
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   $('#scheduleFields').style.display = whenType==='later' ? 'flex' : 'none';
-  $('#scheduleHelp').style.display = whenType==='later' ? 'inline' : 'none';
-
-  if(whenType==='later'){
-    const schedDateInput = $('#schedDate');
-    const today = new Date();
-    const todayStr = dateToYMD(today);
-
-    // min = hoy
-    schedDateInput.setAttribute('min', todayStr);
-
-    if(!schedDateInput.value){
-      // Buscar próxima fecha abierta (dom o mié-sáb)
-      const next = new Date(today);
-      for(let i=0;i<14;i++){
-        const d = next.getDay();
-        if(d===0 || (d>=3 && d<=6)){
-          schedDateInput.value = dateToYMD(next);
-          break;
-        }
-        next.setDate(next.getDate()+1);
-      }
-    }
-    generateTimeOptions();
-  }
 });
-
-/* Cambios al seleccionar fecha programada */
-$('#schedDate').addEventListener('change', generateTimeOptions);
 
 /* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
 function isInSchedule(dateObj){
@@ -774,75 +810,6 @@ function isOpenNow(){
   return isInSchedule(now);
 }
 
-/* Generar opciones de hora cada 15 min según día y 25 min de margen */
-function generateTimeOptions(){
-  const dateStr = $('#schedDate').value;
-  const timeSelect = $('#schedTime');
-  const help = $('#scheduleHelp');
-  timeSelect.innerHTML = '<option value="">Selecciona una hora</option>';
-
-  if(!dateStr){
-    help.textContent = 'Selecciona primero un día.';
-    help.style.display = 'inline';
-    return;
-  }
-
-  const [y,m,d] = dateStr.split('-').map(Number);
-  const dateObj = new Date(y, m-1, d, 12, 0, 0); // medio día
-
-  const day = dateObj.getDay(); // 0=domingo
-  let startHour=null,endHour=null;
-
-  if(day===0){
-    // domingo
-    startHour=12; endHour=16;
-  }else if(day>=3 && day<=6){
-    // mié-sáb
-    startHour=18; endHour=23;
-  }else{
-    help.textContent = 'Ese día estamos cerrados. Elige un domingo o de miércoles a sábado.';
-    help.style.display = 'inline';
-    return;
-  }
-
-  const now = new Date();
-  const minWaitMs = 25*60*1000;
-  const minDate = new Date(now.getTime()+minWaitMs);
-  const todayStr = dateToYMD(now);
-  const isToday = (dateStr===todayStr);
-
-  let added=false;
-
-  for(let h=startHour; h<=endHour; h++){
-    for(let m=0;m<60;m+=15){
-      const hh = String(h).padStart(2,'0');
-      const mm = String(m).padStart(2,'0');
-      const dt = new Date(`${dateStr}T${hh}:${mm}:00`);
-
-      // asegurar que está dentro del rango de horario (por seguridad)
-      if(!isInSchedule(dt)) continue;
-
-      // si es hoy, respetar tiempo mínimo de espera
-      if(isToday && dt<minDate) continue;
-
-      const label = `${hh}:${mm}`;
-      const opt = document.createElement('option');
-      opt.value = `${hh}:${mm}`;
-      opt.textContent = label;
-      timeSelect.appendChild(opt);
-      added=true;
-    }
-  }
-
-  if(!added){
-    help.textContent = 'No hay horarios disponibles para ese día considerando el tiempo mínimo de preparación (25 min).';
-    help.style.display = 'inline';
-  }else{
-    help.textContent = 'Solo se muestran horarios disponibles según el día y el tiempo mínimo de preparación (25 min).';
-    help.style.display = 'inline';
-  }
-}
-
 function calc(){
   const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
   let del=0,km=0;
@@ -862,6 +829,8 @@ function calc(){
 
   const tot=sub+del-disc;
   $('#tot').textContent=fmt(tot);
+
+  lastSummary={subtotal:sub,delivery:del,discount:disc,total:tot};
   buildLink(tot);
 } 
 
@@ -904,9 +873,64 @@ $('#rewardsList').onclick=e=>{
   renderCart();
 };
 
-/* Construir enlace de WhatsApp */
+/* ====== Guardar pedido en Firestore ====== */
+async function saveOrderToFirestore(total, scheduledDateTime){
+  if(!db || !user) return;
+  try{
+    const items=[];
+    for(const id in cart){
+      const it=MENU.find(m=>m.id==id);
+      items.push({
+        id: Number(id),
+        name: it.name,
+        qty: cart[id],
+        price: it.price,
+        type: 'paid'
+      });
+    }
+    for(const rid in cartRewards){
+      const it=MENU.find(m=>m.id==rid);
+      items.push({
+        id: Number(rid),
+        name: it.name,
+        qty: cartRewards[rid],
+        price: 0,
+        type: 'reward'
+      });
+    }
+
+    const order={
+      items,
+      subtotal:lastSummary.subtotal,
+      deliveryFee:lastSummary.delivery,
+      discount:lastSummary.discount,
+      total,
+      deliveryType:delType,
+      scheduled: whenType==='later',
+      scheduledFor: scheduledDateTime ? scheduledDateTime.toISOString() : null,
+      createdAt: serverTimestamp(),
+      status:'pendiente',
+      customer:{
+        name:user.nombre,
+        lastName:user.apellido,
+        email:user.email,
+        phone:user.phone,
+        address:user.address || null
+      },
+      deliveryAddress: delType==='delivery' && orderDelivery ? orderDelivery.address : null,
+      comment: ($('#orderComment').value || '').trim()
+    };
+
+    await addDoc(collection(db,"orders"),order);
+  }catch(err){
+    console.error("Error guardando pedido",err);
+    alert("Tu pedido se envió a WhatsApp, pero no se pudo guardar en el panel admin.");
+  }
+}
+
+/* ====== Construir enlace de WhatsApp + validaciones ====== */
 function buildLink(total){
-  $('#checkout').onclick=e=>{
+  $('#checkout').onclick=async e=>{
     if(!user){
       e.preventDefault();
       $('#cartModal').classList.remove('active');
@@ -928,9 +952,12 @@ function buildLink(total){
       }
     }
 
+    // Validación horario según tipo de pedido + tiempo mínimo 25 min
     const now = new Date();
     const minWaitMs = 25*60*1000;
     const minDate = new Date(now.getTime()+minWaitMs);
+
+    let scheduledDateTime=null;
 
     if(whenType==='now'){
       if(!isOpenNow()){
@@ -938,7 +965,7 @@ function buildLink(total){
         alert("Mamma Maggi está cerrado ahora.\nHorario:\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
         return;
       }
-      // para "ahora" solo informamos tiempo mínimo en el mensaje
+      // para "ahora" sólo respetamos espera mínima en el mensaje
     }else{
       const dVal=$('#schedDate').value;
       const tVal=$('#schedTime').value;
@@ -963,15 +990,20 @@ function buildLink(total){
         alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
         return;
       }
+      scheduledDateTime=dt;
     }
 
     const comment = ($('#orderComment').value || '').trim();
 
+    // puntos a liberar
     const earn=Math.floor(total*RATE);
     user.pending=earn;
     user.pendingAt=Date.now();
     users[user.email]=user;
     saveUsers();
+
+    // Guardar en Firestore
+    await saveOrderToFirestore(total, scheduledDateTime);
 
     let msg=`Hola Mamma Maggi!%0APedido:%0A`;
     // pagados
@@ -1018,14 +1050,72 @@ function buildLink(total){
   };
 }
 
-/* Inicial: setear min de fecha cuando cargue la página */
-window.addEventListener('DOMContentLoaded', ()=>{
-  const schedDateInput = $('#schedDate');
-  if(schedDateInput){
-    const todayStr = dateToYMD(new Date());
-    schedDateInput.setAttribute('min', todayStr);
+/* ====== PANEL ADMIN: suscripción a pedidos ====== */
+function subscribeOrders(){
+  if(!db || ordersUnsub) return;
+  const q = query(collection(db,"orders"), orderBy("createdAt","desc"), limit(50));
+  ordersUnsub = onSnapshot(q,snap=>{
+    const orders = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderAdminOrders(orders);
+  });
+}
+
+function renderAdminOrders(orders){
+  const cont=$('#adminOrders');
+  const sum=$('#adminSummary');
+  if(!orders.length){
+    cont.innerHTML='<p>No hay pedidos todavía.</p>';
+    sum.textContent='';
+    return;
   }
-});
+
+  let totalVentas=0;
+  orders.forEach(o=>{ totalVentas += (o.total||0); });
+
+  sum.textContent=`Pedidos recientes: ${orders.length} • Ventas totales aprox: $${fmt(totalVentas)}`;
+
+  let html=`<table id="adminTable">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Cliente</th>
+        <th>Detalle</th>
+        <th>Entrega</th>
+        <th>Total</th>
+      </tr>
+    </thead><tbody>`;
+
+  orders.forEach(o=>{
+    const created = o.createdAt && o.createdAt.toDate ? o.createdAt.toDate().toLocaleString('es-CL') : '';
+    const sched = o.scheduled && o.scheduledFor ? `<br><strong>Programado:</strong> ${new Date(o.scheduledFor).toLocaleString('es-CL')}` : '';
+    const cust  = o.customer || {};
+    const itemsText = (o.items||[]).map(it=>`${it.qty} x ${it.name}${it.type==='reward'?' (canje)':''}`).join('<br>');
+    const entrega = o.deliveryType==='delivery'
+      ? `Delivery<br>${o.deliveryAddress||''}<br>Delivery: $${fmt(o.deliveryFee||0)}`
+      : `Retiro en local`;
+
+    html+=`<tr>
+      <td>${created}${sched}</td>
+      <td>${cust.name||''} ${cust.lastName||''}<br>${cust.phone||''}</td>
+      <td>${itemsText}</td>
+      <td>${entrega}</td>
+      <td>$${fmt(o.total||0)}</td>
+    </tr>`;
+  });
+
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+/* ==== al cargar, intentar restaurar usuario activo (opcional) ==== */
+(function restore(){
+  // si quieres restaurar automáticamente el último usuario, podríamos guardar aparte;
+  // por ahora sólo se deja quieto.
+})();
+</script>
+</body>
+</html>
+
 </script>
 </body>
 </html>
