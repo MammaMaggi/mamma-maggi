@@ -322,6 +322,13 @@ textarea{min-height:70px;resize:vertical}
     <label style="margin-left:.7rem;"><input type="radio" name="delType" value="delivery"/> Delivery</label>
   </div>
 
+  <!-- Detalle de delivery (dirección a cobrar por distancia) -->
+  <div id="deliveryDetails" style="display:none;margin-top:.4rem">
+    <input id="delAddr" placeholder="Dirección de entrega (Temuco)" />
+    <button type="button" class="btn" id="delGeoBtn" style="margin-top:.4rem">Confirmar dirección delivery</button>
+    <p id="delDistText" style="font-size:.85rem;text-align:center;margin-top:.25rem"></p>
+  </div>
+
   <!-- CUÁNDO QUIERES EL PEDIDO -->
   <div style="margin-top:.7rem">
     <label><strong>¿Para cuándo?</strong></label><br/>
@@ -422,7 +429,8 @@ let user=null,
     cartRewards={}, // productos canjeados con puntos (gratis)
     delType='pickup',
     code=null,
-    whenType='now'; // 'now' o 'later'
+    whenType='now', // 'now' o 'later'
+    orderDelivery=null; // {address,km,fee,lat,lng}
 
 /* Render menú */
 MENU.forEach(i=>{
@@ -476,7 +484,7 @@ $('#toggleAuth').onclick=()=>{
   $('#pass2').style.display=loginMode?'none':'block';
 };
 
-/* Geocode */
+/* Geocode registro (dirección principal) */
 function toRad(d){return d*Math.PI/180;}
 const dist=(a,b,c,d)=>{
   const R=6371;
@@ -493,7 +501,7 @@ $('#geoBtn').onclick=async()=>{
   const {lat,lon}=d[0];
   const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
   const fee=FEE(km);
-  $('#distText').textContent=`${km} km • $${fmt(fee)}`;
+  $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
   $('#map').style.display='block';
   if(!window._map){
     _map=L.map('map').setView([lat,lon],13);
@@ -541,8 +549,8 @@ $('#authForm').onsubmit=e=>{
       alert('Las contraseñas no coinciden');
       return;
     }
-    if(!user||!user.km){
-      alert('Confirma tu dirección antes de registrarte.');
+    if(!user||!user.address){
+      alert('Confirma tu dirección principal antes de registrarte.');
       return;
     }
     user={
@@ -661,13 +669,36 @@ function renderCart(){
 /* Delivery / cupones */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
+  if(delType==='delivery'){
+    $('#deliveryDetails').style.display='block';
+  }else{
+    $('#deliveryDetails').style.display='none';
+    $('#delRow').style.display='none';
+    orderDelivery=null;
+    $('#delDistText').textContent='';
+  }
   calc();
 });
+
 $('#couponBtn').onclick=e=>{
   e.preventDefault();
   const c=$('#coupon').value.trim().toUpperCase();
   code=CODE[c]?c:null;
   $('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';
+  calc();
+};
+
+/* Geocode DELIVERY (dirección específica del pedido) */
+$('#delGeoBtn').onclick=async()=>{
+  const addr=$('#delAddr').value.trim();
+  if(!addr)return alert('Ingresa dirección de entrega');
+  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
+  if(!d[0])return alert('No encontrada');
+  const {lat,lon}=d[0];
+  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
+  const fee=FEE(km);
+  orderDelivery={address:addr,lat:+lat,lng:+lon,km,fee};
+  $('#delDistText').textContent=`Delivery a ${km} km • Costo: $${fmt(fee)}`;
   calc();
 };
 
@@ -706,11 +737,13 @@ function isOpenNow(){
 function calc(){
   const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
   let del=0,km=0;
-  if(delType==='delivery'&&user){
-    del=user.fee;
-    km=user.km;
+
+  if(delType==='delivery' && orderDelivery){
+    del=orderDelivery.fee;
+    km=orderDelivery.km;
   }
-  $('#delRow').style.display=delType==='delivery'?'block':'none';
+
+  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
   $('#del').textContent=fmt(del);
   $('#km').textContent=km;
 
@@ -777,13 +810,27 @@ function buildLink(total){
       return;
     }
 
-    // Validación horario según tipo de pedido
+    // Validación delivery: si eligió delivery, debe haber dirección de entrega confirmada
+    if(delType==='delivery'){
+      if(!orderDelivery || !orderDelivery.address){
+        e.preventDefault();
+        alert("Confirma la dirección de entrega para calcular el delivery.");
+        return;
+      }
+    }
+
+    // Validación horario según tipo de pedido + tiempo mínimo 25 min
+    const now = new Date();
+    const minWaitMs = 25*60*1000;
+    const minDate = new Date(now.getTime()+minWaitMs);
+
     if(whenType==='now'){
       if(!isOpenNow()){
         e.preventDefault();
         alert("Mamma Maggi está cerrado ahora.\nHorario:\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
         return;
       }
+      // para "ahora" solo informamos tiempo mínimo en el mensaje
     }else{
       const dVal=$('#schedDate').value;
       const tVal=$('#schedTime').value;
@@ -793,10 +840,14 @@ function buildLink(total){
         return;
       }
       const dt = new Date(`${dVal}T${tVal}:00`);
-      const now = new Date();
-      if(isNaN(dt.getTime()) || dt < now){
+      if(isNaN(dt.getTime())){
         e.preventDefault();
-        alert("La fecha/hora programada debe ser futura.");
+        alert("Fecha/hora inválida.");
+        return;
+      }
+      if(dt < minDate){
+        e.preventDefault();
+        alert("El tiempo mínimo de espera es de 25 minutos. Elige una hora más adelante.");
         return;
       }
       if(!isInSchedule(dt)){
@@ -836,10 +887,24 @@ function buildLink(total){
       msg+=`%0APara: lo antes posible (hoy)`;
     }
 
+    // tipo de entrega y dirección
+    if(delType==='delivery'){
+      msg+=`%0AModalidad: Delivery`;
+      msg+=`%0ADirección entrega: ${orderDelivery?.address || ''}`;
+    }else{
+      msg+=`%0AModalidad: Retiro en local`;
+      if(user.address){
+        msg+=`%0ADirección registrada cliente: ${user.address}`;
+      }
+    }
+
+    // tiempo mínimo de espera
+    msg+=`%0ATiempo de espera mínimo: 25 minutos`;
+
     if(comment){
       msg+=`%0AComentario: ${comment}`;
     }
-    msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;
+    msg+=`%0ATel: ${user.phone || ''}`;
 
     e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
   };
