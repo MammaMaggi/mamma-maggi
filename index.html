@@ -184,6 +184,21 @@ textarea{min-height:70px;resize:vertical}
   opacity:.9;
 }
 
+/* RECOMPENSAS PUNTOS */
+.reward-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:.5rem;
+  font-size:.9rem;
+  margin-top:.3rem;
+}
+.reward-item button{
+  padding:.25rem .5rem;
+  font-size:.8rem;
+  border-radius:4px;
+}
+
 /* RESPONSIVE */
 @media(max-width:800px){
   .main-layout{
@@ -243,9 +258,8 @@ textarea{min-height:70px;resize:vertical}
 <!-- SECCIÓN CLUB MAGGI -->
 <section id="club" class="static-section">
   <h2>Club Maggi</h2>
-  <p>Por cada compra acumulas puntos en tu cuenta. Luego, puedes canjearlos como descuento en tus próximos pedidos.</p>
-  <p><strong>Regla simple:</strong> 1 punto = $100 de descuento.</p>
-  <p>Los puntos se aplican al finalizar tu pedido, una vez que se haya confirmado la compra anterior.</p>
+  <p>Por cada compra acumulas puntos en tu cuenta. Luego, puedes canjearlos por productos especiales del menú.</p>
+  <p>Por ejemplo: Tiramisú o Palitos de Ajo / Queso, según los puntos que tengas acumulados.</p>
 </section>
 
 <!-- SECCIÓN EVENTOS -->
@@ -281,6 +295,8 @@ textarea{min-height:70px;resize:vertical}
         id="phone" 
         placeholder="Teléfono (+569...)" 
         required
+        pattern="^\+?56?\s?9?\d{8}$"
+        title="Ingresa un número chileno válido, ejemplo: +56964400283"
       />
       <input id="addr" placeholder="Dirección (Temuco)" required />
       <button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
@@ -306,7 +322,18 @@ textarea{min-height:70px;resize:vertical}
     <label style="margin-left:.7rem;"><input type="radio" name="delType" value="delivery"/> Delivery</label>
   </div>
 
-  <div style="margin-top:.5rem">
+  <!-- CUÁNDO QUIERES EL PEDIDO -->
+  <div style="margin-top:.7rem">
+    <label><strong>¿Para cuándo?</strong></label><br/>
+    <label><input type="radio" name="whenType" value="now" checked> Lo antes posible (hoy)</label>
+    <label style="margin-left:.7rem;"><input type="radio" name="whenType" value="later"> Programar</label>
+    <div id="scheduleFields" style="display:none;margin-top:.4rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+      <input type="date" id="schedDate" />
+      <input type="time" id="schedTime" />
+    </div>
+  </div>
+
+  <div style="margin-top:.7rem">
     <label>Código</label>
     <div style="display:flex;gap:.4rem;margin-top:.3rem">
       <input id="coupon" style="flex:1"/>
@@ -315,13 +342,14 @@ textarea{min-height:70px;resize:vertical}
     <small id="couponMsg"></small>
   </div>
 
-  <div id="ptsBox" style="display:none">
-    <p>Puntos: <span id="pts">0</span></p>
-    <label><input type="checkbox" id="redeem"/> Usar pts</label>
+  <!-- CLUB MAGGI / PUNTOS -->
+  <div id="ptsBox" style="display:none;margin-top:.7rem">
+    <p>Tienes <span id="pts">0</span> puntos Club Maggi.</p>
+    <div id="rewardsList"></div>
   </div>
 
   <!-- Comentario antes de finalizar -->
-  <div>
+  <div style="margin-top:.7rem">
     <label for="orderComment">Comentario para tu pedido (opcional)</label>
     <textarea id="orderComment" placeholder="Ej: sin cebolla, tocar timbre, dejar en conserjería, etc."></textarea>
   </div>
@@ -329,47 +357,12 @@ textarea{min-height:70px;resize:vertical}
   <p class="summary">Subtotal: $<span id="sub">0</span></p>
   <p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
   <p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
-  <p class="summary" id="redRow" style="display:none">Puntos: –$<span id="red">0</span></p>
   <p class="summary">Total: $<span id="tot">0</span></p>
   <a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
 </div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- FIREBASE + LÓGICA -->
-<script type="module">
-/* ================= FIREBASE ================= */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  collection, 
-  addDoc 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
-  authDomain: "mamma-maggi.firebaseapp.com",
-  projectId: "mamma-maggi",
-  storageBucket: "mamma-maggi.firebasestorage.app",
-  messagingSenderId: "148248596670",
-  appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
-  measurementId: "G-L8ZT1KN1YC"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-
-/* ================= CONST Y DATA ================= */
+<script>
 const MENU=[
   {id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
   {id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
@@ -386,7 +379,7 @@ const MENU=[
   {id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},
   {id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},
   {id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},
-  {id:16,name:'Tiramisú',desc:'',price:4990},
+  {id:16,name:'Tiramisú',desc:'Postre clásico italiano.',price:4990},
   {id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
   {id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}
 ];
@@ -394,57 +387,44 @@ const MENU=[
 const ORIGIN=[-38.731229, -72.626507];
 const CODE={MAGGI10:.1};
 const PHONE='56949486579';
-const RATE=.001,VAL=100;          // puntos
+const RATE=.001; // regla puntos: 1 punto por cada $1000 aprox
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
+const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 
-const $=q=>document.querySelector(q);
-const fmt=n=>n.toLocaleString('es-CL');
+/* Recompensas canjeables con puntos (usa IDs de MENU) */
+const REWARDS=[
+  {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
+  {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
+  {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
+];
 
-/* ================= ESTADO GLOBAL ================= */
-let currentUser = null;       // perfil del usuario logueado (desde Firestore)
-let pendingGeo  = null;       // dirección confirmada al registrarse
-let cart        = {};         // {id: cantidad}
-let delType     = 'pickup';
-let code        = null;
-let redeem      = false;
-let lastCalc    = {sub:0,del:0,disc:0,red:0,total:0};
+/* Storage */
+const users=JSON.parse(localStorage.getItem('users')||'{}');
+function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
 
-/* ================= HELPERS ================= */
+/* Points release check */
+function releasePoints(u){
+  if(u.pending&&Date.now()-u.pendingAt>=300000){
+    u.points=(u.points||0)+u.pending;
+    u.pending=0;
+    saveUsers();
+  }
+}
+
+/* Normalizar teléfono (deja solo dígitos) */
 function normalizePhone(phone){
   return phone.replace(/\D/g,'');
 }
 
-function updateUserInfoUI(){
-  const userInfo=$('#userInfo');
-  if(currentUser){
-    userInfo.textContent = `Hola, ${currentUser.nombre || ''} (${currentUser.points || 0} pts)`;
-    $('#pts').textContent = currentUser.points || 0;
-    $('#ptsBox').style.display = (currentUser.points||0) ? 'block' : 'none';
-  }else{
-    userInfo.textContent='';
-    $('#ptsBox').style.display='none';
-  }
-}
+/* Estado */
+let user=null,
+    cart={},
+    cartRewards={}, // productos canjeados con puntos (gratis)
+    delType='pickup',
+    code=null,
+    whenType='now'; // 'now' o 'later'
 
-/* ====== HORARIO ABIERTO / CERRADO ====== */
-function isOpenNow(){
-  const now=new Date();
-  const day=now.getDay(); // 0=domingo
-  const hour=now.getHours();
-  const min=now.getMinutes();
-
-  // domingo 12-16
-  if(day===0){
-    return hour>=12 && (hour<16 || (hour===16 && min===0));
-  }
-  // miércoles=3, jueves=4, viernes=5, sábado=6 → 18-23
-  if(day>=3 && day<=6){
-    return hour>=18 && (hour<23 || (hour===23 && min===0));
-  }
-  return false;
-}
-
-/* ================= RENDER MENÚ ================= */
+/* Render menú */
 MENU.forEach(i=>{
   const c=document.createElement('div');
   c.className='card';
@@ -456,6 +436,7 @@ MENU.forEach(i=>{
   $('#menuGrid').appendChild(c);
 });
 
+/* Agregar al carrito */
 $('#menuGrid').onclick=e=>{
   if(e.target.dataset.id){
     const id=+e.target.dataset.id;
@@ -469,10 +450,22 @@ function updateCount(){
   $('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
 }
 
-/* ================= AUTH MODAL ================= */
+/* Auth modal */
 const authM=$('#authModal');
+const authForm=$('#authForm');
+
 $('#loginBtn').onclick=()=>authM.classList.add('active');
-$('#closeAuth').onclick=()=>authM.classList.remove('active');
+$('#closeAuth').onclick=()=>closeAuthModal();
+
+function closeAuthModal(){
+  authM.classList.remove('active');
+  authForm.reset();
+  loginMode=true;
+  $('#authTitle').textContent='Inicia Sesión';
+  $('#authSubmit').textContent='Entrar';
+  $('#extra').style.display='none';
+  $('#pass2').style.display='none';
+}
 
 let loginMode=true;
 $('#toggleAuth').onclick=()=>{
@@ -483,7 +476,7 @@ $('#toggleAuth').onclick=()=>{
   $('#pass2').style.display=loginMode?'none':'block';
 };
 
-/* ================= GEOLOCALIZACIÓN (Nominatim) ================= */
+/* Geocode */
 function toRad(d){return d*Math.PI/180;}
 const dist=(a,b,c,d)=>{
   const R=6371;
@@ -495,8 +488,7 @@ const dist=(a,b,c,d)=>{
 $('#geoBtn').onclick=async()=>{
   const addr=$('#addr').value.trim();
   if(!addr)return alert('Ingresa dirección');
-  const resp=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`);
-  const d=await resp.json();
+  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
   if(!d[0])return alert('No encontrada');
   const {lat,lon}=d[0];
   const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
@@ -504,138 +496,93 @@ $('#geoBtn').onclick=async()=>{
   $('#distText').textContent=`${km} km • $${fmt(fee)}`;
   $('#map').style.display='block';
   if(!window._map){
-    window._map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
+    _map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
   }
-  window._map.setView([lat,lon],13);
-  if(window._mk)window._map.removeLayer(window._mk);
-  window._mk=L.marker([lat,lon]).addTo(window._map);
-
-  // guardamos para registro
-  pendingGeo = {
-    lat:+lat,
-    lng:+lon,
-    km,
-    fee,
-    address:addr
-  };
+  _map.setView([lat,lon],13);
+  if(window._mk)_map.removeLayer(_mk);
+  _mk=L.marker([lat,lon]).addTo(_map);
+  if (!user) user = {};
+  Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
 };
 
-/* ================= FIREBASE: CARGAR PERFIL ================= */
-async function loadUserProfile(uid,emailFallback){
-  const ref=doc(db,'users',uid);
-  const snap=await getDoc(ref);
-  let data;
-  if(snap.exists()){
-    data=snap.data();
+/* Actualizar UI usuario */
+function updateUserUI(){
+  if(user){
+    $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points||0} pts)`;
+    $('#pts').textContent=user.points||0;
+    $('#ptsBox').style.display='block';
+    renderRewards();
   }else{
-    data={
-      uid,
-      email: emailFallback || '',
-      points:0,
-      pending:0,
-      pendingAt:null
-    };
-    await setDoc(ref,data);
+    $('#userInfo').textContent='';
+    $('#ptsBox').style.display='none';
+    $('#rewardsList').innerHTML='';
   }
-
-  // liberar puntos pendientes si pasaron 5 minutos
-  if(data.pending && data.pendingAt && (Date.now()-data.pendingAt)>=300000){
-    data.points = (data.points||0) + data.pending;
-    data.pending = 0;
-    data.pendingAt = null;
-    await setDoc(ref,{
-      points:data.points,
-      pending:0,
-      pendingAt:null
-    },{merge:true});
-  }
-
-  currentUser = data;
-  updateUserInfoUI();
 }
 
-/* ================= AUTH FORM SUBMIT ================= */
-$('#authForm').onsubmit=async e=>{
+/* Login / Registro */
+$('#authForm').onsubmit=e=>{
   e.preventDefault();
   const email=$('#email').value.trim().toLowerCase();
   const pass=$('#pass').value;
   const pass2=$('#pass2').value;
 
-  try{
-    if(loginMode){
-      // LOGIN
-      const cred = await signInWithEmailAndPassword(auth,email,pass);
-      await loadUserProfile(cred.user.uid, cred.user.email);
-    }else{
-      // REGISTRO
-      if(pass!==pass2){
-        alert('Las contraseñas no coinciden');
-        return;
-      }
-      if(!pendingGeo){
-        alert('Confirma tu dirección antes de registrarte.');
-        return;
-      }
-      const nombre  = $('#name').value.trim();
-      const apellido= $('#last').value.trim();
-      const phone   = normalizePhone($('#phone').value);
-
-      const cred = await createUserWithEmailAndPassword(auth,email,pass);
-      const uid  = cred.user.uid;
-
-      const profile = {
-        uid,
-        email,
-        nombre,
-        apellido,
-        phone,
-        ...pendingGeo,
-        points:0,
-        pending:0,
-        pendingAt:null,
-        createdAt: Date.now()
-      };
-
-      await setDoc(doc(db,'users',uid),profile);
-      currentUser = profile;
-      updateUserInfoUI();
+  if(loginMode){
+    // LOGIN
+    if(!users[email]||users[email].pass!==pass){
+      alert('Credenciales inválidas');
+      return;
     }
-
-    authM.classList.remove('active');
-    // si venía desde el carrito esperando login
-    if($('#cartModal').classList.contains('wait-login')){
-      $('#cartModal').classList.remove('wait-login');
-      calc();
-      $('#cartModal').classList.add('active');
+    user={...users[email]};
+    releasePoints(user);
+  }else{
+    // REGISTRO
+    if(pass!==pass2){
+      alert('Las contraseñas no coinciden');
+      return;
     }
-  }catch(err){
-    console.error(err);
-    alert(err.message || 'Error en autenticación');
+    if(!user||!user.km){
+      alert('Confirma tu dirección antes de registrarte.');
+      return;
+    }
+    user={
+      ...user,
+      email,
+      pass,
+      nombre:$('#name').value.trim(),
+      apellido:$('#last').value.trim(),
+      phone:normalizePhone($('#phone').value),
+      points:0,
+      pending:0
+    };
+    users[email]=user;
+    saveUsers();
+  }
+
+  updateUserUI();
+  closeAuthModal();
+
+  if($('#cartModal').classList.contains('wait-login')){
+    $('#cartModal').classList.remove('wait-login');
+    calc();
+    $('#cartModal').classList.add('active');
   }
 };
 
-/* ================= OBSERVAR SESIÓN ================= */
-onAuthStateChanged(auth, user=>{
-  if(user){
-    loadUserProfile(user.uid, user.email);
-  }else{
-    currentUser=null;
-    updateUserInfoUI();
-  }
-});
-
-/* ================= CARRITO MODAL Y LATERAL ================= */
+/* Cart modal */
 $('#cartBtn').onclick=()=>{
   renderCart();
   $('#cartModal').classList.add('active');
 };
 $('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
+
+/* botón lateral "ver detalle" */
 $('#openCartFromSide').onclick=()=>{
   renderCart();
   $('#cartModal').classList.add('active');
 };
 
+/* Cambios en cantidades dentro del modal */
 $('#cartItems').onclick=e=>{
   if(e.target.closest('.qty')){
     const id=+e.target.closest('.qty').dataset.id;
@@ -654,11 +601,11 @@ function renderCart(){
   s.innerHTML='';
 
   let sub=0;
+  // Productos pagados
   for(const id in cart){
     const it=MENU.find(m=>m.id==id),
           q = cart[id];
 
-    // línea en modal
     w.innerHTML+=`
       <div class='cart-item'>
         <span>${it.name}</span>
@@ -670,7 +617,6 @@ function renderCart(){
         <span>$${fmt(it.price*q)}</span>
       </div>`;
 
-    // línea en carrito lateral
     s.innerHTML+=`
       <div class="side-line">
         <span>${q} x ${it.name}</span>
@@ -680,7 +626,27 @@ function renderCart(){
     sub+=it.price*q;
   }
 
-  if(!Object.keys(cart).length){
+  // Productos de recompensa (precio 0)
+  for(const rid in cartRewards){
+    const it=MENU.find(m=>m.id==rid),
+          q=cartRewards[rid];
+    if(!it) continue;
+
+    w.innerHTML+=`
+      <div class='cart-item'>
+        <span>${it.name} (canje puntos)</span>
+        <span>${q} x</span>
+        <span>$0</span>
+      </div>`;
+
+    s.innerHTML+=`
+      <div class="side-line">
+        <span>${q} x ${it.name} (canje)</span>
+        <span>$0</span>
+      </div>`;
+  }
+
+  if(!Object.keys(cart).length && !Object.keys(cartRewards).length){
     s.innerHTML='';
     $('#sideCart').style.display='none';
   }else{
@@ -692,7 +658,7 @@ function renderCart(){
   calc();
 }
 
-/* ================= DELIVERY / CUPONES / PUNTOS ================= */
+/* Delivery / cupones */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
   calc();
@@ -704,17 +670,45 @@ $('#couponBtn').onclick=e=>{
   $('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';
   calc();
 };
-$('#redeem').onchange=e=>{
-  redeem=e.target.checked;
-  calc();
-};
+
+/* CUÁNDO QUIERES EL PEDIDO (now / later) */
+document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
+  whenType=e.target.value;
+  $('#scheduleFields').style.display = whenType==='later' ? 'flex' : 'none';
+});
+
+/* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
+function isInSchedule(dateObj){
+  const day=dateObj.getDay(); // 0=domingo
+  const hour=dateObj.getHours();
+  const min=dateObj.getMinutes();
+
+  // domingo 12-16
+  if(day===0){
+    return hour>=12 && (hour<16 || (hour===16 && min===0));
+  }
+
+  // miércoles=3, jueves=4, viernes=5, sábado=6 → 18-23
+  if(day>=3 && day<=6){
+    return hour>=18 && (hour<23 || (hour===23 && min===0));
+  }
+
+  // resto cerrado
+  return false;
+}
+
+/* Función para saber si está abierto AHORA */
+function isOpenNow(){
+  const now=new Date();
+  return isInSchedule(now);
+}
 
 function calc(){
   const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
   let del=0,km=0;
-  if(delType==='delivery' && currentUser){
-    del=currentUser.fee || 0;
-    km=currentUser.km  || 0;
+  if(delType==='delivery'&&user){
+    del=user.fee;
+    km=user.km;
   }
   $('#delRow').style.display=delType==='delivery'?'block':'none';
   $('#del').textContent=fmt(del);
@@ -724,106 +718,132 @@ function calc(){
   $('#discRow').style.display=disc?'block':'none';
   $('#disc').textContent=fmt(disc);
 
-  if(!currentUser || !currentUser.points){
-    redeem=false;
-    $('#redeem').checked=false;
-  }
-  $('#redeem').disabled=!currentUser || !currentUser.points;
-
-  const red=redeem?Math.min((currentUser?.points||0)*VAL, sub+del-disc):0;
-  $('#redRow').style.display=red?'block':'none';
-  $('#red').textContent=fmt(red);
-
-  const tot=sub+del-disc-red;
+  const tot=sub+del-disc;
   $('#tot').textContent=fmt(tot);
+  buildLink(tot);
+} 
 
-  lastCalc = {sub,del,disc,red,total:tot};
+/* Render lista de recompensas */
+function renderRewards(){
+  const box = $('#rewardsList');
+  box.innerHTML='';
+  if(!user) return;
+
+  REWARDS.forEach(r=>{
+    const it = MENU.find(m=>m.id===r.id);
+    if(!it) return;
+    const can = (user.points||0) >= r.pts;
+    box.innerHTML+=`
+      <div class="reward-item">
+        <span>${r.label}</span>
+        <button class="btn" data-rid="${r.id}" ${can?'':'disabled'}>
+          ${can?'Canjear':'No alcanza'}
+        </button>
+      </div>`;
+  });
 }
 
-/* ================= CHECKOUT WHATSAPP + GUARDAR PEDIDO ================= */
-$('#checkout').onclick=async e=>{
-  e.preventDefault();
+/* Click en recompensas */
+$('#rewardsList').onclick=e=>{
+  const btn=e.target.closest('button[data-rid]');
+  if(!btn || !user) return;
+  const rid=+btn.dataset.rid;
+  const reward=REWARDS.find(r=>r.id===rid);
+  if(!reward) return;
+  if((user.points||0) < reward.pts) return;
 
-  if(!currentUser){
-    $('#cartModal').classList.remove('active');
-    $('#cartModal').classList.add('wait-login');
-    authM.classList.add('active');
-    return;
-  }
+  // Descontar puntos y agregar producto gratis
+  user.points = (user.points||0) - reward.pts;
+  users[user.email]=user;
+  saveUsers();
+  cartRewards[rid]=(cartRewards[rid]||0)+1;
 
-  if(lastCalc.total<=0){
-    return;
-  }
+  updateUserUI();
+  renderCart();
+};
 
-  if(!isOpenNow()){
-    alert("Mamma Maggi está cerrado ahora.\nHorario:\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-    return;
-  }
-
-  const comment = ($('#orderComment').value || '').trim();
-
-  // guardar pedido en Firestore
-  try{
-    const items=[];
-    for(const id in cart){
-      const it=MENU.find(m=>m.id==id);
-      items.push({
-        id: it.id,
-        name: it.name,
-        qty: cart[id],
-        unitPrice: it.price,
-        lineTotal: it.price*cart[id]
-      });
+/* Construir enlace de WhatsApp */
+function buildLink(total){
+  $('#checkout').onclick=e=>{
+    if(!user){
+      e.preventDefault();
+      $('#cartModal').classList.remove('active');
+      $('#cartModal').classList.add('wait-login');
+      authM.classList.add('active');
+      return;
+    }
+    if(total<=0){
+      e.preventDefault();
+      return;
     }
 
-    await addDoc(collection(db,'orders'),{
-      userId : currentUser.uid,
-      email  : currentUser.email,
-      items,
-      subtotal        : lastCalc.sub,
-      deliveryFee     : lastCalc.del,
-      discountAmount  : lastCalc.disc,
-      pointsRedeemed  : lastCalc.red,
-      total           : lastCalc.total,
-      comment,
-      deliveryType    : delType,
-      km              : currentUser.km || 0,
-      address         : currentUser.address || '',
-      phone           : currentUser.phone || '',
-      createdAt       : Date.now()
-    });
+    // Validación horario según tipo de pedido
+    if(whenType==='now'){
+      if(!isOpenNow()){
+        e.preventDefault();
+        alert("Mamma Maggi está cerrado ahora.\nHorario:\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+        return;
+      }
+    }else{
+      const dVal=$('#schedDate').value;
+      const tVal=$('#schedTime').value;
+      if(!dVal || !tVal){
+        e.preventDefault();
+        alert("Elige fecha y hora para programar tu pedido.");
+        return;
+      }
+      const dt = new Date(`${dVal}T${tVal}:00`);
+      const now = new Date();
+      if(isNaN(dt.getTime()) || dt < now){
+        e.preventDefault();
+        alert("La fecha/hora programada debe ser futura.");
+        return;
+      }
+      if(!isInSchedule(dt)){
+        e.preventDefault();
+        alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+        return;
+      }
+    }
 
-    // asignar puntos pendientes (se liberan después de 5 min en el próximo login)
-    const earn=Math.floor(lastCalc.total*RATE);
-    const ref = doc(db,'users',currentUser.uid);
-    const nextPending = earn;
-    await setDoc(ref,{
-      pending: nextPending,
-      pendingAt: Date.now()
-    },{merge:true});
+    const comment = ($('#orderComment').value || '').trim();
 
-    currentUser.pending  = nextPending;
-    currentUser.pendingAt= Date.now();
-  }catch(err){
-    console.error('Error guardando pedido:',err);
-    alert('No se pudo guardar el pedido, pero puedes intentar nuevamente.');
-  }
+    const earn=Math.floor(total*RATE);
+    user.pending=earn;
+    user.pendingAt=Date.now();
+    users[user.email]=user;
+    saveUsers();
 
-  // armar mensaje WhatsApp
-  let msg=`Hola Mamma Maggi!%0APedido:%0A`;
-  for(const id in cart){
-    const it=MENU.find(m=>m.id==id);
-    msg+=`${cart[id]} x ${it.name}%0A`;
-  }
-  msg+=`%0ATotal: $${fmt(lastCalc.total)}`;
-  if(comment){
-    msg+=`%0AComentario: ${comment}`;
-  }
-  msg+=`%0A${currentUser.address||''}%0ATel: ${currentUser.phone||''}`;
+    let msg=`Hola Mamma Maggi!%0APedido:%0A`;
+    // pagados
+    for(const id in cart){
+      const it=MENU.find(m=>m.id==id);
+      msg+=`${cart[id]} x ${it.name}%0A`;
+    }
+    // recompensas
+    for(const rid in cartRewards){
+      const it=MENU.find(m=>m.id==rid);
+      msg+=`${cartRewards[rid]} x ${it.name} (canje puntos)%0A`;
+    }
 
-  const url=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
-  window.location.href = url;
-};
+    msg+=`%0ATotal: $${fmt(total)}`;
+
+    if(whenType==='later'){
+      const dVal=$('#schedDate').value;
+      const tVal=$('#schedTime').value;
+      msg+=`%0APara: ${dVal} ${tVal}`;
+    }else{
+      msg+=`%0APara: lo antes posible (hoy)`;
+    }
+
+    if(comment){
+      msg+=`%0AComentario: ${comment}`;
+    }
+    msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;
+
+    e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
+  };
+}
 </script>
 </body>
 </html>
