@@ -9,6 +9,7 @@
 
 <!-- Firebase (compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
@@ -416,9 +417,8 @@ textarea{min-height:70px;resize:vertical}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ===========================
-//  FIREBASE INIT (FIRESTORE)
+//  FIREBASE INIT (FIRESTORE + AUTH)
 // ===========================
-let db = null;
 const firebaseConfig = {
   apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
   authDomain: "mamma-maggi.firebaseapp.com",
@@ -428,19 +428,9 @@ const firebaseConfig = {
   appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
   measurementId: "G-L8ZT1KN1YC"
 };
-
-try{
-  if(typeof firebase !== "undefined"){
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    console.log("Firebase inicializado");
-  }else{
-    console.warn("Firebase no está disponible");
-  }
-}catch(err){
-  console.error("Error iniciando Firebase:", err);
-  db = null;
-}
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
 
 // ===========================
 //  DATOS Y CONSTANTES
@@ -467,7 +457,15 @@ const MENU=[
 ];
 
 const ORIGIN=[-38.731229, -72.626507];
-const CODE={MAGGI10:.1};
+
+// Códigos de descuento
+const CODE = {
+  MAGGI10: 0.10,
+  BIENVENIDO15: 0.15,
+  CUMPLE20: 0.20,
+  PIZZALOVER5: 0.05
+};
+
 const PHONE='56949486579';
 const RATE=.001; // regla puntos: 1 punto por cada $1000 aprox
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
@@ -480,36 +478,37 @@ const REWARDS=[
   {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
 ];
 
-const ADMIN_PASS = "mamma2025";
-
-/* Storage local para usuarios */
-const users=JSON.parse(localStorage.getItem('users')||'{}');
-function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
-
-/* Points release check */
-function releasePoints(u){
-  if(u.pending&&Date.now()-u.pendingAt>=300000){
-    u.points=(u.points||0)+u.pending;
-    u.pending=0;
-    saveUsers();
-  }
-}
-
-/* Normalizar teléfono (deja solo dígitos) */
-function normalizePhone(phone){
-  return phone.replace(/\D/g,'');
-}
+const ADMIN_PASS = "mamma2025"; // clave admin
 
 /* Estado */
 let user=null,
     cart={},
-    cartRewards={},
+    cartRewards={}, // productos canjeados con puntos (gratis)
     delType='pickup',
     code=null,
-    whenType='now',
-    orderDelivery=null;
+    whenType='now', // 'now' o 'later'
+    orderDelivery=null; // {address,km,fee,lat,lng}
 
-/* Render menú */
+let loginMode = true; // true = login, false = registro
+let regLocation = { address:null, lat:null, lng:null, km:null, fee:null }; // datos de dirección al registrarse
+
+// ===========================
+//  UTILITARIOS
+// ===========================
+function normalizePhone(phone){
+  return phone.replace(/\D/g,'');
+}
+function toRad(d){return d*Math.PI/180;}
+const dist=(a,b,c,d)=>{
+  const R=6371;
+  const dLat=toRad(c-a),dLon=toRad(d-b);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+};
+
+// ===========================
+//  RENDER MENÚ
+// ===========================
 MENU.forEach(i=>{
   const c=document.createElement('div');
   c.className='card';
@@ -521,7 +520,6 @@ MENU.forEach(i=>{
   $('#menuGrid').appendChild(c);
 });
 
-/* Agregar al carrito */
 $('#menuGrid').onclick=e=>{
   if(e.target.dataset.id){
     const id=+e.target.dataset.id;
@@ -535,7 +533,9 @@ function updateCount(){
   $('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
 }
 
-/* Auth modal */
+// ===========================
+//  AUTH MODAL
+// ===========================
 const authM=$('#authModal');
 const authForm=$('#authForm');
 
@@ -552,7 +552,6 @@ function closeAuthModal(){
   $('#pass2').style.display='none';
 }
 
-let loginMode=true;
 $('#toggleAuth').onclick=()=>{
   loginMode=!loginMode;
   $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
@@ -561,15 +560,7 @@ $('#toggleAuth').onclick=()=>{
   $('#pass2').style.display=loginMode?'none':'block';
 };
 
-/* Geocode registro (dirección principal) */
-function toRad(d){return d*Math.PI/180;}
-const dist=(a,b,c,d)=>{
-  const R=6371;
-  const dLat=toRad(c-a),dLon=toRad(d-b);
-  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
-};
-
+// Geocode registro (dirección principal)
 $('#geoBtn').onclick=async()=>{
   const addr=$('#addr').value.trim();
   if(!addr)return alert('Ingresa dirección');
@@ -581,20 +572,134 @@ $('#geoBtn').onclick=async()=>{
   $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
   $('#map').style.display='block';
   if(!window._map){
-    window._map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
+    _map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
   }
-  window._map.setView([lat,lon],13);
-  if(window._mk)window._map.removeLayer(window._mk);
-  window._mk=L.marker([lat,lon]).addTo(window._map);
-  if (!user) user = {};
-  Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
+  _map.setView([lat,lon],13);
+  if(window._mk)_map.removeLayer(_mk);
+  _mk=L.marker([lat,lon]).addTo(_map);
+
+  regLocation = { address:addr, lat:+lat, lng:+lon, km, fee };
+};
+
+// Cargar perfil de Firestore cuando hay usuario autenticado
+async function loadUserProfile(fbUser){
+  if(!fbUser){ user=null; updateUserUI(); return; }
+  const docRef = db.collection('users').doc(fbUser.uid);
+  const snap   = await docRef.get();
+  if(!snap.exists){
+    // si no existe documento, creamos uno básico
+    user = {
+      uid: fbUser.uid,
+      email: fbUser.email,
+      nombre: '',
+      apellido: '',
+      phone: '',
+      address: '',
+      lat:null,lng:null,km:null,fee:null,
+      points:0,
+      pending:0,
+      pendingAt:null
+    };
+    await docRef.set(user);
+  }else{
+    user = {
+      uid: fbUser.uid,
+      email: fbUser.email,
+      ...snap.data()
+    };
+    // liberar puntos pendientes si corresponde
+    await releasePendingPoints(docRef);
+  }
+  updateUserUI();
+}
+
+async function releasePendingPoints(docRef){
+  if(!user.pending || !user.pendingAt) return;
+  let pendingAtDate = user.pendingAt.toDate ? user.pendingAt.toDate() : new Date(user.pendingAt);
+  const diff = Date.now() - pendingAtDate.getTime();
+  if(diff >= 300000){ // 5 minutos
+    user.points = (user.points||0) + user.pending;
+    user.pending = 0;
+    user.pendingAt = null;
+    await docRef.update({
+      points:user.points,
+      pending:0,
+      pendingAt:null
+    });
+  }
+}
+
+// Listener global de auth
+auth.onAuthStateChanged(fbUser=>{
+  if(fbUser){
+    loadUserProfile(fbUser);
+  }else{
+    user=null;
+    updateUserUI();
+  }
+});
+
+// Login / Registro con Firebase Auth
+$('#authForm').onsubmit = async e => {
+  e.preventDefault();
+  const email = $('#email').value.trim().toLowerCase();
+  const pass  = $('#pass').value;
+  const pass2 = $('#pass2').value;
+
+  try{
+    if(loginMode){
+      // LOGIN
+      await auth.signInWithEmailAndPassword(email, pass);
+      // onAuthStateChanged cargará el perfil
+      closeAuthModal();
+    }else{
+      // REGISTRO
+      if(pass!==pass2){
+        alert('Las contraseñas no coinciden');
+        return;
+      }
+      if(!regLocation.address){
+        alert('Confirma tu dirección principal antes de registrarte (botón "Confirmar dirección").');
+        return;
+      }
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      const uid  = cred.user.uid;
+      const profile = {
+        email,
+        nombre: $('#name').value.trim(),
+        apellido: $('#last').value.trim(),
+        phone: normalizePhone($('#phone').value),
+        address: regLocation.address,
+        lat: regLocation.lat,
+        lng: regLocation.lng,
+        km:  regLocation.km,
+        fee: regLocation.fee,
+        points:0,
+        pending:0,
+        pendingAt:null
+      };
+      await db.collection('users').doc(uid).set(profile);
+      // onAuthStateChanged cargará user
+      closeAuthModal();
+      alert('Cuenta creada. Ya estás conectado.');
+    }
+
+    if($('#cartModal').classList.contains('wait-login')){
+      $('#cartModal').classList.remove('wait-login');
+      calc();
+      $('#cartModal').classList.add('active');
+    }
+  }catch(err){
+    console.error(err);
+    alert('Error de autenticación: ' + (err.message || err.code));
+  }
 };
 
 /* Actualizar UI usuario */
 function updateUserUI(){
   if(user){
-    $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points||0} pts)`;
+    $('#userInfo').textContent=`Hola, ${user.nombre || user.email} (${user.points||0} pts)`;
     $('#pts').textContent=user.points||0;
     $('#ptsBox').style.display='block';
     renderRewards();
@@ -605,56 +710,9 @@ function updateUserUI(){
   }
 }
 
-/* Login / Registro */
-$('#authForm').onsubmit=e=>{
-  e.preventDefault();
-  const email=$('#email').value.trim().toLowerCase();
-  const pass=$('#pass').value;
-  const pass2=$('#pass2').value;
-
-  if(loginMode){
-    // LOGIN
-    if(!users[email]||users[email].pass!==pass){
-      alert('Credenciales inválidas');
-      return;
-    }
-    user={...users[email]};
-    releasePoints(user);
-  }else{
-    // REGISTRO
-    if(pass!==pass2){
-      alert('Las contraseñas no coinciden');
-      return;
-    }
-    if(!user||!user.address){
-      alert('Confirma tu dirección principal antes de registrarte.');
-      return;
-    }
-    user={
-      ...user,
-      email,
-      pass,
-      nombre:$('#name').value.trim(),
-      apellido:$('#last').value.trim(),
-      phone:normalizePhone($('#phone').value),
-      points:0,
-      pending:0
-    };
-    users[email]=user;
-    saveUsers();
-  }
-
-  updateUserUI();
-  closeAuthModal();
-
-  if($('#cartModal').classList.contains('wait-login')){
-    $('#cartModal').classList.remove('wait-login');
-    calc();
-    $('#cartModal').classList.add('active');
-  }
-};
-
-/* Cart modal */
+// ===========================
+//  CARRITO MODAL Y LATERAL
+// ===========================
 $('#cartBtn').onclick=()=>{
   renderCart();
   $('#cartModal').classList.add('active');
@@ -680,12 +738,13 @@ $('#cartItems').onclick=e=>{
 };
 
 function renderCart(){
-  const w=$('#cartItems');
-  const s=$('#sideCartItems');
+  const w=$('#cartItems');       // contenido modal
+  const s=$('#sideCartItems');   // carrito lateral
   w.innerHTML='';
   s.innerHTML='';
 
   let sub=0;
+  // Productos pagados
   for(const id in cart){
     const it=MENU.find(m=>m.id==id),
           q = cart[id];
@@ -710,6 +769,7 @@ function renderCart(){
     sub+=it.price*q;
   }
 
+  // Productos de recompensa (precio 0)
   for(const rid in cartRewards){
     const it=MENU.find(m=>m.id==rid),
           q=cartRewards[rid];
@@ -741,7 +801,9 @@ function renderCart(){
   calc();
 }
 
-/* Delivery / cupones */
+// ===========================
+//  DELIVERY / CUPONES / HORARIOS
+// ===========================
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
   if(delType==='delivery'){
@@ -763,7 +825,7 @@ $('#couponBtn').onclick=e=>{
   calc();
 };
 
-/* Geocode DELIVERY */
+/* Geocode DELIVERY (dirección específica del pedido) */
 $('#delGeoBtn').onclick=async()=>{
   const addr=$('#delAddr').value.trim();
   if(!addr)return alert('Ingresa dirección de entrega');
@@ -777,7 +839,7 @@ $('#delGeoBtn').onclick=async()=>{
   calc();
 };
 
-/* CUÁNDO QUIERES EL PEDIDO */
+/* CUÁNDO QUIERES EL PEDIDO (now / later) */
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   if(whenType==='later'){
@@ -789,14 +851,15 @@ document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   }
 });
 
-/* Ventanas de horario */
+/* Definir ventanas de horario por día */
 function getOpenWindowsForDay(dayIdx){
-  if(dayIdx===0) return [{start:12,end:16}];
-  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}];
+  // 0=domingo, 3=mié,4=jue,5=vie,6=sáb
+  if(dayIdx===0) return [{start:12,end:16}];  // 12:00-16:00
+  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}]; // 18:00-23:00
   return [];
 }
 
-/* Construir opciones de programación (7 días) */
+/* Construye lista de fechas y horarios (cada 15 min) */
 function buildScheduleOptions(){
   const dateSel = $('#schedDate');
   const timeSel = $('#schedTime');
@@ -834,6 +897,7 @@ function buildScheduleOptions(){
   rebuildTimeOptions();
 }
 
+/* Recalcular horarios disponibles de acuerdo a la fecha seleccionada */
 function rebuildTimeOptions(){
   const dateSel = $('#schedDate');
   const timeSel = $('#schedTime');
@@ -885,31 +949,59 @@ function rebuildTimeOptions(){
   const firstEnabled = Array.from(timeSel.options).find(o=>!o.disabled && o.value);
   if(firstEnabled) timeSel.value = firstEnabled.value;
 
-  $('#scheduleHint').textContent='Solo horarios en horario de atención. Mínimo 25 min de anticipación.';
+  $('#scheduleHint').textContent='Solo se muestran horarios dentro del horario de atención. Mínimo 25 min de anticipación.';
 }
 
-/* Horario válido */
+/* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
 function isInSchedule(dateObj){
-  const day=dateObj.getDay();
+  const day=dateObj.getDay(); // 0=domingo
   const hour=dateObj.getHours();
   const min=dateObj.getMinutes();
 
+  // domingo 12-16
   if(day===0){
     return hour>=12 && (hour<16 || (hour===16 && min===0));
   }
+
+  // miércoles=3, jueves=4, viernes=5, sábado=6 → 18-23
   if(day>=3 && day<=6){
     return hour>=18 && (hour<23 || (hour===23 && min===0));
   }
+
   return false;
 }
 
-/* Abierto ahora */
+/* Función para saber si está abierto AHORA */
 function isOpenNow(){
   const now=new Date();
   return isInSchedule(now);
 }
 
-/* Puntos / recompensas */
+function calc(){
+  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
+  let del=0,km=0;
+
+  if(delType==='delivery' && orderDelivery){
+    del=orderDelivery.fee;
+    km=orderDelivery.km;
+  }
+
+  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
+  $('#del').textContent=fmt(del);
+  $('#km').textContent=km;
+
+  const disc=code?Math.round(sub*CODE[code]):0;
+  $('#discRow').style.display=disc?'block':'none';
+  $('#disc').textContent=fmt(disc);
+
+  const tot=sub+del-disc;
+  $('#tot').textContent=fmt(tot);
+  buildLink(tot);
+} 
+
+// ===========================
+//  RECOMPENSAS
+// ===========================
 function renderRewards(){
   const box = $('#rewardsList');
   box.innerHTML='';
@@ -937,207 +1029,216 @@ $('#rewardsList').onclick=e=>{
   if(!reward) return;
   if((user.points||0) < reward.pts) return;
 
-  user.points = (user.points||0) - reward.pts;
-  users[user.email]=user;
-  saveUsers();
-  cartRewards[rid]=(cartRewards[rid]||0)+1;
-
-  updateUserUI();
-  renderCart();
+  // Descontar puntos en Firestore y agregar producto gratis
+  const newPoints = (user.points||0) - reward.pts;
+  db.collection('users').doc(user.uid).update({
+    points:newPoints
+  }).then(()=>{
+    user.points = newPoints;
+    cartRewards[rid]=(cartRewards[rid]||0)+1;
+    updateUserUI();
+    renderCart();
+  }).catch(err=>{
+    console.error(err);
+    alert('No se pudo canjear puntos. Intenta de nuevo.');
+  });
 };
 
-/* Cálculo totales */
-function calc(){
-  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
-  let del=0,km=0;
-
-  if(delType==='delivery' && orderDelivery){
-    del=orderDelivery.fee;
-    km=orderDelivery.km;
-  }
-
-  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
-  $('#del').textContent=fmt(del);
-  $('#km').textContent=km;
-
-  const disc=code?Math.round(sub*CODE[code]):0;
-  $('#discRow').style.display=disc?'block':'none';
-  $('#disc').textContent=fmt(disc);
-
-  const tot=sub+del-disc;
-  $('#tot').textContent=fmt(tot);
-}
-
-/* CHECKOUT: WhatsApp + Firestore */
-$('#checkout').onclick = async e => {
-  const total=parseInt($('#tot').textContent.replace(/\./g,''))||0;
-
-  if (!user){
-    e.preventDefault();
-    $('#cartModal').classList.remove('active');
-    $('#cartModal').classList.add('wait-login');
-    authM.classList.add('active');
-    return;
-  }
-  if (total <= 0){
-    e.preventDefault();
-    alert("Tu pedido no tiene productos.");
-    return;
-  }
-
-  if(delType==='delivery'){
-    if(!orderDelivery || !orderDelivery.address){
+// ===========================
+//  FINALIZAR PEDIDO: WHATSAPP + FIRESTORE
+// ===========================
+function buildLink(total){
+  $('#checkout').onclick = async e => {
+    if (!user) {
       e.preventDefault();
-      alert("Debes confirmar la dirección de entrega.");
+      $('#cartModal').classList.remove('active');
+      $('#cartModal').classList.add('wait-login');
+      authM.classList.add('active');
       return;
     }
-  }
-
-  const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
-  const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
-
-  const now = new Date();
-  const minWaitMs = 25*60*1000;
-  const minDate = new Date(now.getTime() + minWaitMs);
-  let scheduledDate = null;
-
-  if(whenType==='later'){
-    const dVal = $('#schedDate').value;
-    const tVal = $('#schedTime').value;
-
-    if (!dVal || !tVal){
+    if (total <= 0) {
       e.preventDefault();
-      alert("Selecciona fecha y hora para programar tu pedido.");
+      alert("Tu pedido no tiene productos.");
       return;
     }
 
-    const [y,m,d] = dVal.split('-').map(Number);
-    const [hh,mm] = tVal.split(':').map(Number);
-    const dt = new Date(y,m-1,d,hh,mm,0);
-    scheduledDate = dt;
-
-    if (dt < minDate){
-      e.preventDefault();
-      alert("El pedido debe programarse al menos 25 minutos más tarde.");
-      return;
+    // Validación delivery
+    if (delType === 'delivery') {
+      if (!orderDelivery || !orderDelivery.address) {
+        e.preventDefault();
+        alert("Debes confirmar la dirección de entrega.");
+        return;
+      }
     }
-    if (!isInSchedule(dt)){
-      e.preventDefault();
-      alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-      return;
+
+    const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
+    const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
+
+    // Validación tiempo mínimo 25 min
+    const now = new Date();
+    const minWaitMs = 25 * 60 * 1000;
+    const minDate = new Date(now.getTime() + minWaitMs);
+    let scheduledDate = null;
+
+    if (whenType === 'later') {
+      const dVal = $('#schedDate').value;
+      const tVal = $('#schedTime').value;
+
+      if (!dVal || !tVal) {
+        e.preventDefault();
+        alert("Selecciona fecha y hora para programar tu pedido.");
+        return;
+      }
+
+      const [y,m,d] = dVal.split('-').map(Number);
+      const [hh,mm] = tVal.split(':').map(Number);
+      const dt = new Date(y,m-1,d,hh,mm,0);
+      scheduledDate = dt;
+
+      if (dt < minDate) {
+        e.preventDefault();
+        alert("El pedido debe programarse al menos 25 minutos más tarde.");
+        return;
+      }
+      if (!isInSchedule(dt)) {
+        e.preventDefault();
+        alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+        return;
+      }
+    } else {
+      if (!isOpenNow()) {
+        e.preventDefault();
+        alert("Estamos cerrados ahora.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+        return;
+      }
     }
-  }else{
-    if(!isOpenNow()){
-      e.preventDefault();
-      alert("Estamos cerrados ahora.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-      return;
+
+    const comment = ($('#orderComment').value || '').trim();
+
+    // Puntos ganados: se mandan a pending
+    const earn=Math.floor(total*RATE);
+    const pendingAt = new Date();
+    try{
+      await db.collection('users').doc(user.uid).update({
+        pending: firebase.firestore.FieldValue.increment(earn),
+        pendingAt: firebase.firestore.Timestamp.fromDate(pendingAt)
+      });
+      user.pending = (user.pending||0) + earn;
+      user.pendingAt = pendingAt;
+    }catch(err){
+      console.error('Error actualizando puntos:', err);
     }
-  }
 
-  const comment = ($('#orderComment').value || '').trim();
+    // ============================
+    //   GUARDAR PEDIDO EN FIRESTORE
+    // ============================
+    const items = Object.entries(cart).map(([id,q])=>{
+      const it = MENU.find(m=>m.id==id);
+      return {
+        id:+id,
+        name:it?.name || '',
+        qty:q,
+        unitPrice:it?.price || 0,
+        lineTotal:(it?.price || 0)*q
+      };
+    });
 
-  // Puntos
-  const earn=Math.floor(total*RATE);
-  user.pending=earn;
-  user.pendingAt=Date.now();
-  users[user.email]=user;
-  saveUsers();
+    const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
+      const it = MENU.find(m=>m.id==id);
+      return {
+        id:+id,
+        name:it?.name || '',
+        qty:q,
+        reward:true
+      };
+    });
 
-  // Guardar pedido en Firestore (si hay db)
-  const items = Object.entries(cart).map(([id,q])=>{
-    const it = MENU.find(m=>m.id==id);
-    return {
-      id:+id,
-      name:it?.name || '',
-      qty:q,
-      unitPrice:it?.price || 0,
-      lineTotal:(it?.price || 0)*q
+    const orderData = {
+      items,
+      rewards:rewardsItems,
+      subtotal:sub,
+      deliveryCost:delCost,
+      total,
+      deliveryType:delType,
+      deliveryAddress:delType==='delivery' && orderDelivery ? orderDelivery.address : null,
+      deliveryKm:delType==='delivery' && orderDelivery ? orderDelivery.km : null,
+      comment,
+      whenType,
+      scheduledAt: scheduledDate ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      user:{
+        uid:user.uid,
+        email:user.email,
+        nombre:user.nombre,
+        apellido:user.apellido,
+        phone:user.phone,
+        address:user.address || null
+      },
+      status:'pendiente',
+      source:'web'
     };
-  });
 
-  const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
-    const it = MENU.find(m=>m.id==id);
-    return {
-      id:+id,
-      name:it?.name || '',
-      qty:q,
-      reward:true
-    };
-  });
-
-  const orderData = {
-    items,
-    rewards:rewardsItems,
-    subtotal:sub,
-    deliveryCost:delCost,
-    total,
-    deliveryType:delType,
-    deliveryAddress:delType==='delivery' && orderDelivery ? orderDelivery.address : null,
-    deliveryKm:delType==='delivery' && orderDelivery ? orderDelivery.km : null,
-    comment,
-    whenType,
-    scheduledAt: scheduledDate && db ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
-    createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : null,
-    user:{
-      email:user.email,
-      nombre:user.nombre,
-      apellido:user.apellido,
-      phone:user.phone,
-      address:user.address || null
-    },
-    status:'pendiente',
-    source:'web'
-  };
-
-  if(db){
     try{
       await db.collection('orders').add(orderData);
-      console.log("Pedido guardado en Firestore");
     }catch(err){
-      console.error("Error guardando pedido:", err);
+      console.error('Error guardando pedido:',err);
+      // No bloqueamos el envío de WhatsApp si falla Firestore
     }
-  }else{
-    console.warn("No se guarda en Firestore (db nula)");
-  }
 
-  // Mensaje WhatsApp en texto normal
-  let msg = "Hola Mamma Maggi!\nPedido:\n";
+    // ============================
+    //   CONSTRUCCIÓN DEL MENSAJE
+    // ============================
+    let msg = `Hola Mamma Maggi!%0APedido:%0A`;
 
-  for(const id in cart){
-    const it = MENU.find(m=>m.id==id);
-    msg += `${cart[id]} x ${it.name}\n`;
-  }
-  for(const rid in cartRewards){
-    const it = MENU.find(m=>m.id==rid);
-    msg += `${cartRewards[rid]} x ${it.name} (canje)\n`;
-  }
+    // Productos normales
+    for (const id in cart) {
+      const it = MENU.find(m => m.id == id);
+      msg += `${cart[id]} x ${it.name}%0A`;
+    }
 
-  msg += `\nTotal: $${fmt(total)}\n`;
+    // Recompensas
+    for (const rid in cartRewards) {
+      const it = MENU.find(m => m.id == rid);
+      msg += `${cartRewards[rid]} x ${it.name} (canje)%0A`;
+    }
 
-  if(whenType==='later' && scheduledDate){
-    const dVal = $('#schedDate').value;
-    const tVal = $('#schedTime').value;
-    msg += `Para: ${dVal} ${tVal}\n`;
-  }else{
-    msg += `Para: Lo antes posible (hoy)\n`;
-  }
+    // Total
+    msg += `%0ATotal: $${fmt(total)}`;
 
-  if(delType==='delivery'){
-    msg += `Modalidad: Delivery\n`;
-    msg += `Entrega: ${orderDelivery?.address || ''}\n`;
-  }else{
-    msg += `Modalidad: Retiro en local\n`;
-  }
+    // Fecha / hora
+    if (whenType === 'later' && scheduledDate) {
+      const dVal = $('#schedDate').value;
+      const tVal = $('#schedTime').value;
+      msg += `%0APara: ${dVal} ${tVal}`;
+    } else {
+      msg += `%0APara: Lo antes posible (hoy)`;
+    }
 
-  msg += `Tiempo de espera mínimo: 25 minutos\n`;
-  if(comment) msg += `Comentario: ${comment}\n`;
-  msg += `Teléfono cliente: ${user.phone || ''}`;
+    // Tipo de entrega
+    if (delType === 'delivery') {
+      msg += `%0AModalidad: Delivery`;
+      msg += `%0AEntrega: ${orderDelivery?.address || ''}`;
+    } else {
+      msg += `%0AModalidad: Retiro en local`;
+    }
 
-  const waURL = `https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
-  e.currentTarget.href = waURL;
-};
+    // Tiempo mínimo de espera
+    msg += `%0ATiempo de espera mínimo: 25 minutos`;
 
-/* PANEL ADMIN */
+    // Comentario opcional
+    if (comment) msg += `%0AComentario: ${comment}`;
+
+    // Teléfono del cliente
+    msg += `%0ATeléfono cliente: ${user.phone || ''}`;
+
+    const waURL = `https://wa.me/${PHONE}?text=${msg}`;
+    e.currentTarget.href = waURL;
+  };
+}
+
+// ===========================
+//   PANEL ADMIN (LECTURA)
+// ===========================
 $('#adminEnter').onclick = ()=>{
   const val = $('#adminPass').value;
   if(val === ADMIN_PASS){
@@ -1153,10 +1254,6 @@ $('#refreshOrders').onclick = loadOrders;
 
 function loadOrders(){
   const container = $('#ordersList');
-  if(!db){
-    container.innerHTML='<p style="color:#f88;">Firestore no está disponible.</p>';
-    return;
-  }
   container.innerHTML='Cargando pedidos...';
 
   db.collection('orders')
@@ -1178,7 +1275,7 @@ function loadOrders(){
         div.className='admin-order';
         div.innerHTML=`
           <div class="admin-order-header">
-            <span>${data.user?.nombre || 'Cliente'}</span>
+            <span>${data.user?.nombre || data.user?.email || 'Cliente'}</span>
             <span>${fecha}</span>
           </div>
           <div class="admin-order-body">
@@ -1202,13 +1299,12 @@ function loadOrders(){
     });
 }
 
-/* INICIO */
+// ===========================
+//   INICIO
+// ===========================
 updateUserUI();
 </script>
 </body>
 </html>
 
-</script>
-</body>
-</html>
 
