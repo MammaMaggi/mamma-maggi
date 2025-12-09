@@ -10,46 +10,81 @@
 :root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
-a{color:var(--accent)}button{font-family:inherit;border:none;cursor:pointer}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit;border:none;cursor:pointer}
 h1,h2,h3{font-family:'Staatliches',cursive;font-weight:400}
-header{display:flex;align-items:center;justify-content:center;gap:.7rem;padding:1rem 1rem 1.2rem;position:relative;text-align:center}
+
+/* HEADER */
+header{
+  display:flex;align-items:center;justify-content:center;
+  gap:.7rem;padding:1rem 1rem .5rem;position:relative;text-align:center
+}
 header h1{font-size:2.3rem;letter-spacing:2px}
-#loginBtn{position:absolute;left:1rem;top:1rem;background:none;color:var(--fg);font-size:1.2rem}
-#cartBtn{position:absolute;right:1rem;top:1rem;width:42px;height:42px;border:2px solid var(--fg);border-radius:50%;background:none;color:var(--fg);display:flex;align-items:center;justify-content:center}
+#loginBtn{
+  position:absolute;left:1rem;top:1rem;
+  background:none;color:var(--fg);font-size:1rem
+}
+#cartBtn{
+  position:absolute;right:1rem;top:1rem;
+  width:42px;height:42px;border:2px solid var(--fg);border-radius:50%;
+  background:none;color:var(--fg);display:flex;align-items:center;justify-content:center
+}
 #cartBtn span{font-size:.8rem}
 #userInfo{font-size:.8rem;opacity:.8}
 
-/* layout principal: menú + carrito lateral */
+/* NAV */
+nav{
+  text-align:center;
+  margin-bottom:1rem;
+}
+nav a{
+  margin:0 .6rem;
+  font-size:.9rem;
+  opacity:.9;
+}
+nav a:hover{opacity:1;text-decoration:underline}
+
+/* LAYOUT PRINCIPAL: MENÚ + CARRITO LATERAL */
 .main-layout{
   max-width:1200px;
   margin:auto;
-  padding:2rem 1rem;
+  padding:1.5rem 1rem 2rem;
   display:grid;
   grid-template-columns:minmax(0,2fr) 320px;
   gap:1.5rem;
   align-items:flex-start;
 }
-
 .main-layout section{
   max-width:100%;
   margin:0;
   padding:0;
 }
-
 section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
 
-.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
-.card{background:var(--card);border-radius:8px;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
+/* CARDS MENÚ */
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:1.5rem;
+}
+.card{
+  background:var(--card);border-radius:8px;
+  padding:1rem;display:flex;flex-direction:column;gap:.6rem;
+}
 .price{font-weight:700}
-.card button{margin-top:auto;padding:.6rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
+.card button{
+  margin-top:auto;padding:.6rem;border-radius:4px;
+  background:var(--accent);color:#fff;font-weight:700
+}
 
-/* carrito lateral */
+/* CARRITO LATERAL */
 #sideCart{
   background:var(--card);
   border-radius:8px;
   padding:1rem;
   position:sticky;
   top:1rem;
+  display:none; /* oculto hasta que haya productos */
 }
 #sideCart h3{
   margin-bottom:.6rem;
@@ -77,20 +112,68 @@ section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
   font-size:.95rem;
 }
 
-/* modal */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .3s}
+/* MODAL GENÉRICO */
+.modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;visibility:hidden;transition:opacity .3s
+}
 .modal.active{opacity:1;visibility:visible}
-.box{background:var(--card);border-radius:8px;padding:1.4rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
-.close{align-self:flex-end;color:var(--fg);font-size:1.3rem;cursor:pointer;background:none}
+.box{
+  background:var(--card);border-radius:8px;
+  padding:1.4rem;width:90%;max-width:520px;
+  max-height:90vh;overflow-y:auto;
+  display:flex;flex-direction:column;gap:1rem
+}
+.close{
+  align-self:flex-end;color:var(--fg);
+  font-size:1.3rem;cursor:pointer;background:none
+}
 form{display:grid;gap:1rem}
-input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#222;color:var(--fg)}
-.btn{padding:.8rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
-.cart-item{display:flex;justify-content:space-between;align-items:center;gap:.4rem}
-.qty{display:flex;align-items:center;gap:.4rem}
-.qty button{width:24px;height:24px;border:1px solid var(--fg);background:none;color:var(--fg);border-radius:4px;font-weight:700}
+input,select,textarea{
+  padding:.7rem;border-radius:4px;
+  border:1px solid #333;background:#222;color:var(--fg)
+}
+textarea{min-height:70px;resize:vertical}
+.btn{
+  padding:.8rem;border-radius:4px;
+  background:var(--accent);color:#fff;font-weight:700
+}
+
+/* CARRITO EN MODAL */
+.cart-item{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:.4rem
+}
+.qty{
+  display:flex;align-items:center;gap:.4rem
+}
+.qty button{
+  width:24px;height:24px;border:1px solid var(--fg);
+  background:none;color:var(--fg);
+  border-radius:4px;font-weight:700
+}
 .summary{text-align:right;font-size:1.05rem;font-weight:700}
 #map{height:220px;border-radius:6px;margin-top:.5rem;display:none}
 
+/* SECCIONES EXTRA */
+.static-section{
+  max-width:960px;
+  margin:0 auto 2rem;
+  padding:0 1rem 2rem;
+}
+.static-section h2{
+  text-align:center;
+  font-size:1.9rem;
+  margin-bottom:1rem;
+}
+.static-section p{
+  margin-bottom:.6rem;
+  font-size:.95rem;
+  opacity:.9;
+}
+
+/* RESPONSIVE */
 @media(max-width:800px){
   .main-layout{
     grid-template-columns:1fr;
@@ -104,13 +187,21 @@ input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#2
 </head>
 <body>
 <header>
-<button id="loginBtn" title="Ingresar / Registrarse">👤</button>
-<h1>MAMMA MAGGI</h1>
-<div id="userInfo"></div>
-<button id="cartBtn">🛒 <span id="cartCount">0</span></button>
+  <button id="loginBtn" title="Ingresar / Registrarse">👤 Ingresar / Registrar</button>
+  <h1>MAMMA MAGGI</h1>
+  <div id="userInfo"></div>
+  <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
 </header>
 
-<!-- layout: menú + carrito lateral -->
+<nav>
+  <a href="#top">Pedidos</a>
+  <a href="#nosotros">Nosotros</a>
+  <a href="#club">Club Maggi</a>
+  <a href="#eventos">Eventos</a>
+  <a href="#contacto">Contacto</a>
+</nav>
+
+<a id="top"></a>
 <div class="main-layout">
   <section>
     <h2>Nuestro Menú</h2>
@@ -127,64 +218,132 @@ input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#2
   </aside>
 </div>
 
+<!-- SECCIÓN NOSOTROS -->
+<section id="nosotros" class="static-section">
+  <h2>Nosotros</h2>
+  <p>Mamma Maggi nace en Temuco con la idea de hacer pizzas con cariño de casa, masa fermentada en frío y productos de calidad.</p>
+  <p>Trabajamos con masas reposadas, buena mozzarella y recetas pensadas para que cada pizza realmente valga la pena.</p>
+</section>
+
+<!-- SECCIÓN CLUB MAGGI -->
+<section id="club" class="static-section">
+  <h2>Club Maggi</h2>
+  <p>Por cada compra acumulas puntos en tu cuenta. Luego, puedes canjearlos como descuento en tus próximos pedidos.</p>
+  <p><strong>Regla simple:</strong> 1 punto = $100 de descuento.</p>
+  <p>Los puntos se aplican al finalizar tu pedido, una vez que se haya confirmado la compra anterior.</p>
+</section>
+
+<!-- SECCIÓN EVENTOS -->
+<section id="eventos" class="static-section">
+  <h2>Eventos y Catering</h2>
+  <p>¿Tienes cumpleaños, reunión con amigos o evento de empresa? Escríbenos y armamos un plan de pizzas para tu grupo.</p>
+  <p>Puedes pedir por WhatsApp indicando fecha, horario estimado, cantidad de personas y sector en Temuco.</p>
+</section>
+
+<!-- SECCIÓN CONTACTO -->
+<section id="contacto" class="static-section">
+  <h2>Contacto</h2>
+  <p>📍 Sector Lérida con Javiera Carrera, Temuco.</p>
+  <p>⏰ Miércoles a sábado, de 18:00 a 22:00 hrs.</p>
+  <p>📱 WhatsApp: <a href="https://wa.me/56949486579" target="_blank">+56 9 4948 6579</a></p>
+  <p>📸 Instagram: <a href="https://www.instagram.com/mamma.maggi" target="_blank">@mamma.maggi</a></p>
+</section>
+
 <!-- Auth Modal -->
 <div class="modal" id="authModal"><div class="box">
-<button class="close" id="closeAuth">✕</button>
-<h2 id="authTitle">Inicia Sesión</h2>
-<form id="authForm">
-<input type="email" id="email" placeholder="Correo" required />
-<input type="password" id="pass" placeholder="Contraseña" required />
-<div id="extra" style="display:none">
-<input id="name" placeholder="Nombre" />
-<input id="last" placeholder="Apellido" />
-<input id="phone" placeholder="Teléfono" />
-<input id="addr" placeholder="Dirección (Temuco)" />
-<button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
-<p id="distText" style="text-align:center"></p>
-<div id="map"></div>
-</div>
-<button class="btn" id="authSubmit">Entrar</button>
-<p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">¿No tienes cuenta? Regístrate</p>
-</form></div></div>
+  <button class="close" id="closeAuth">✕</button>
+  <h2 id="authTitle">Inicia Sesión</h2>
+  <form id="authForm">
+    <input type="email" id="email" placeholder="Correo" required />
+    <input type="password" id="pass" placeholder="Contraseña" required />
+    <!-- Confirmar contraseña SOLO para registro -->
+    <input type="password" id="pass2" placeholder="Confirmar contraseña" style="display:none" />
+
+    <div id="extra" style="display:none">
+      <input id="name" placeholder="Nombre" required />
+      <input id="last" placeholder="Apellido" required />
+      <input 
+        id="phone" 
+        placeholder="Teléfono (+569...)" 
+        required 
+        pattern="^(\+?56)?9\\d{8}$"
+        title="Debe ser un número chileno, por ejemplo +56912345678" 
+      />
+      <input id="addr" placeholder="Dirección (Temuco)" required />
+      <button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
+      <p id="distText" style="text-align:center"></p>
+      <div id="map"></div>
+    </div>
+
+    <button class="btn" id="authSubmit">Entrar</button>
+    <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">
+      ¿No tienes cuenta? Regístrate
+    </p>
+  </form>
+</div></div>
 
 <!-- Cart Modal -->
 <div class="modal" id="cartModal"><div class="box">
-<button class="close" id="closeCart">✕</button>
-<h2>Tu Pedido</h2>
-<div id="cartItems"></div>
-<div><label><input type="radio" name="delType" value="pickup" checked /> Retiro</label>  <label><input type="radio" name="delType" value="delivery"/> Delivery</label></div>
-<div style="margin-top:.5rem"><label>Código</label><div style="display:flex;gap:.4rem;margin-top:.3rem"><input id="coupon" style="flex:1"/><button class="btn" id="couponBtn" style="padding:.5rem .8rem">Aplicar</button></div><small id="couponMsg"></small></div>
-<div id="ptsBox" style="display:none"><p>Puntos: <span id="pts">0</span></p><label><input type="checkbox" id="redeem"/> Usar pts</label></div>
-<p class="summary">Subtotal: $<span id="sub">0</span></p>
-<p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
-<p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
-<p class="summary" id="redRow" style="display:none">Puntos: –$<span id="red">0</span></p>
-<p class="summary">Total: $<span id="tot">0</span></p>
-<a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
+  <button class="close" id="closeCart">✕</button>
+  <h2>Tu Pedido</h2>
+  <div id="cartItems"></div>
+
+  <div>
+    <label><input type="radio" name="delType" value="pickup" checked /> Retiro</label>
+    <label style="margin-left:.7rem;"><input type="radio" name="delType" value="delivery"/> Delivery</label>
+  </div>
+
+  <div style="margin-top:.5rem">
+    <label>Código</label>
+    <div style="display:flex;gap:.4rem;margin-top:.3rem">
+      <input id="coupon" style="flex:1"/>
+      <button class="btn" id="couponBtn" style="padding:.5rem .8rem">Aplicar</button>
+    </div>
+    <small id="couponMsg"></small>
+  </div>
+
+  <div id="ptsBox" style="display:none">
+    <p>Puntos: <span id="pts">0</span></p>
+    <label><input type="checkbox" id="redeem"/> Usar pts</label>
+  </div>
+
+  <!-- Comentario antes de finalizar -->
+  <div>
+    <label for="orderComment">Comentario para tu pedido (opcional)</label>
+    <textarea id="orderComment" placeholder="Ej: sin cebolla, tocar timbre, dejar en conserjería, etc."></textarea>
+  </div>
+
+  <p class="summary">Subtotal: $<span id="sub">0</span></p>
+  <p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
+  <p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
+  <p class="summary" id="redRow" style="display:none">Puntos: –$<span id="red">0</span></p>
+  <p class="summary">Total: $<span id="tot">0</span></p>
+  <a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
 </div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const MENU=[
-{id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
-{id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
-{id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990},
-{id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500},
-{id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500},
-{id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, chapiñones, cebolla morada y pimentón.',price:11990},
-{id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990},
-{id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500},
-{id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500},
-{id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990},
-{id:11,name:'Bernarda',desc:'Salsa de tomate, mozzarella, queso azul, nueces, miel, ricotta y albahaca.',price:10990},
-{id:12,name:'Bacon No Bacon',desc:'Salsa de tomate, mozzarella, proteina de soja sabor tocino y cebolla.',price:10990},
-{id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},
-{id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},
-{id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},
-{id:16,name:'Tiramisú',desc:'',price:4990},
-{id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
-{id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}
+  {id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
+  {id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
+  {id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990},
+  {id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500},
+  {id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500},
+  {id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, chapiñones, cebolla morada y pimentón.',price:11990},
+  {id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990},
+  {id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500},
+  {id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500},
+  {id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990},
+  {id:11,name:'Bernarda',desc:'Salsa de tomate, mozzarella, queso azul, nueces, miel, ricotta y albahaca.',price:10990},
+  {id:12,name:'Bacon No Bacon',desc:'Salsa de tomate, mozzarella, proteina de soja sabor tocino y cebolla.',price:10990},
+  {id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},
+  {id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},
+  {id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},
+  {id:16,name:'Tiramisú',desc:'',price:4990},
+  {id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
+  {id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}
 ];
+
 const ORIGIN=[-38.731229, -72.626507];
 const CODE={MAGGI10:.1};
 const PHONE='56949486579';
@@ -196,20 +355,30 @@ const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 const users=JSON.parse(localStorage.getItem('users')||'{}');
 function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
 /* Points release check */
-function releasePoints(u){if(u.pending&&Date.now()-u.pendingAt>=300000){u.points=(u.points||0)+u.pending;u.pending=0;saveUsers();}}
+function releasePoints(u){
+  if(u.pending&&Date.now()-u.pendingAt>=300000){
+    u.points=(u.points||0)+u.pending;
+    u.pending=0;
+    saveUsers();
+  }
+}
 
 /* State */
 let user=null,cart={},delType='pickup',code=null,redeem=false;
 
-/* Menu */
+/* Render menú */
 MENU.forEach(i=>{
   const c=document.createElement('div');
   c.className='card';
-  c.innerHTML=`<h3>${i.name}</h3><p>${i.desc}</p><span class='price'>$${fmt(i.price)}</span><button class='btn' data-id='${i.id}'>Agregar</button>`;
+  c.innerHTML=`
+    <h3>${i.name}</h3>
+    <p>${i.desc}</p>
+    <span class='price'>$${fmt(i.price)}</span>
+    <button class='btn' data-id='${i.id}'>Agregar</button>`;
   $('#menuGrid').appendChild(c);
 });
 
-// al hacer click en "Agregar", sumamos y actualizamos carrito lateral
+/* Agregar al carrito */
 $('#menuGrid').onclick=e=>{
   if(e.target.dataset.id){
     const id=+e.target.dataset.id;
@@ -227,12 +396,14 @@ function updateCount(){
 const authM=$('#authModal');
 $('#loginBtn').onclick=()=>authM.classList.add('active');
 $('#closeAuth').onclick=()=>authM.classList.remove('active');
+
 let loginMode=true;
 $('#toggleAuth').onclick=()=>{
   loginMode=!loginMode;
   $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
   $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
   $('#extra').style.display=loginMode?'none':'block';
+  $('#pass2').style.display=loginMode?'none':'block';
 };
 
 /* Geocode */
@@ -265,25 +436,45 @@ $('#geoBtn').onclick=async()=>{
   Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
 };
 
+/* Login / Registro mejorado */
 $('#authForm').onsubmit=e=>{
   e.preventDefault();
-  const email=$('#email').value.trim().toLowerCase(),
-        pass=$('#pass').value;
+  const email=$('#email').value.trim().toLowerCase();
+  const pass=$('#pass').value;
+  const pass2=$('#pass2').value;
+
   if(loginMode){
-    if(!users[email]||users[email].pass!==pass)return alert('Credenciales');
+    // LOGIN
+    if(!users[email]||users[email].pass!==pass){
+      alert('Credenciales inválidas');
+      return;
+    }
     user={...users[email]};
     releasePoints(user);
   }else{
-    if(!user||!user.km)return alert('Confirma dirección');
-    user={...user,email,pass,
+    // REGISTRO
+    if(pass!==pass2){
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+    if(!user||!user.km){
+      alert('Confirma tu dirección antes de registrarte.');
+      return;
+    }
+    user={
+      ...user,
+      email,
+      pass,
       nombre:$('#name').value.trim(),
       apellido:$('#last').value.trim(),
       phone:$('#phone').value.trim(),
-      points:0,pending:0
+      points:0,
+      pending:0
     };
     users[email]=user;
     saveUsers();
   }
+
   $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points} pts)`;
   $('#pts').textContent=user.points;
   $('#ptsBox').style.display=user.points?'block':'none';
@@ -302,12 +493,13 @@ $('#cartBtn').onclick=()=>{
 };
 $('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
 
-// botón "Ver detalle y finalizar" del carrito lateral
+/* botón lateral "ver detalle" */
 $('#openCartFromSide').onclick=()=>{
   renderCart();
   $('#cartModal').classList.add('active');
 };
 
+/* Cambios en cantidades dentro del modal */
 $('#cartItems').onclick=e=>{
   if(e.target.closest('.qty')){
     const id=+e.target.closest('.qty').dataset.id;
@@ -353,7 +545,11 @@ function renderCart(){
   }
 
   if(!Object.keys(cart).length){
-    s.innerHTML='<p class="side-empty">Aún no agregas nada 🍕</p>';
+    // carrito vacío: se oculta lateral
+    s.innerHTML='';
+    $('#sideCart').style.display='none';
+  }else{
+    $('#sideCart').style.display='block';
   }
 
   $('#sub').textContent=fmt(sub);
@@ -361,6 +557,7 @@ function renderCart(){
   calc();
 }
 
+/* Delivery / cupones / puntos */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
   calc();
@@ -407,6 +604,7 @@ function calc(){
   buildLink(tot,red);
 } 
 
+/* Construir enlace de WhatsApp */
 function buildLink(total,red){
   $('#checkout').onclick=e=>{
     if(!user){
@@ -420,17 +618,25 @@ function buildLink(total,red){
       e.preventDefault();
       return;
     }
+
+    const comment = ($('#orderComment').value || '').trim();
+
     const earn=Math.floor(total*RATE);
     user.pending=earn;
     user.pendingAt=Date.now();
     saveUsers();
+
     let msg=`Hola Mamma Maggi!%0APedido:%0A`;
     for(const id in cart){
       const it=MENU.find(m=>m.id==id);
       msg+=`${cart[id]} x ${it.name}%0A`;
     }
     msg+=`%0ATotal: $${fmt(total)}`;
+    if(comment){
+      msg+=`%0AComentario: ${comment}`;
+    }
     msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;
+
     e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
   };
 }
