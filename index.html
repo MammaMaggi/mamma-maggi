@@ -348,7 +348,7 @@ textarea{min-height:70px;resize:vertical}
       <div id="map"></div>
     </div>
 
-    <button class="btn" id="authSubmit">Entrar</button>
+    <button class="btn" id="authSubmit" type="submit">Entrar</button>
     <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">
       ¿No tienes cuenta? Regístrate
     </p>
@@ -418,6 +418,7 @@ textarea{min-height:70px;resize:vertical}
 // ===========================
 //  FIREBASE INIT (FIRESTORE)
 // ===========================
+let db = null;
 const firebaseConfig = {
   apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
   authDomain: "mamma-maggi.firebaseapp.com",
@@ -427,8 +428,19 @@ const firebaseConfig = {
   appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
   measurementId: "G-L8ZT1KN1YC"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+
+try{
+  if(typeof firebase !== "undefined"){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    console.log("Firebase inicializado");
+  }else{
+    console.warn("Firebase no está disponible");
+  }
+}catch(err){
+  console.error("Error iniciando Firebase:", err);
+  db = null;
+}
 
 // ===========================
 //  DATOS Y CONSTANTES
@@ -468,9 +480,9 @@ const REWARDS=[
   {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
 ];
 
-const ADMIN_PASS = "mamma2025"; // puedes cambiar esta clave
+const ADMIN_PASS = "mamma2025";
 
-/* Storage local para usuarios (solo correos / perfil básico) */
+/* Storage local para usuarios */
 const users=JSON.parse(localStorage.getItem('users')||'{}');
 function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
 
@@ -491,11 +503,11 @@ function normalizePhone(phone){
 /* Estado */
 let user=null,
     cart={},
-    cartRewards={}, // productos canjeados con puntos (gratis)
+    cartRewards={},
     delType='pickup',
     code=null,
-    whenType='now', // 'now' o 'later'
-    orderDelivery=null; // {address,km,fee,lat,lng}
+    whenType='now',
+    orderDelivery=null;
 
 /* Render menú */
 MENU.forEach(i=>{
@@ -569,12 +581,12 @@ $('#geoBtn').onclick=async()=>{
   $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
   $('#map').style.display='block';
   if(!window._map){
-    _map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
+    window._map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
   }
-  _map.setView([lat,lon],13);
-  if(window._mk)_map.removeLayer(_mk);
-  _mk=L.marker([lat,lon]).addTo(_map);
+  window._map.setView([lat,lon],13);
+  if(window._mk)window._map.removeLayer(window._mk);
+  window._mk=L.marker([lat,lon]).addTo(window._map);
   if (!user) user = {};
   Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
 };
@@ -668,13 +680,12 @@ $('#cartItems').onclick=e=>{
 };
 
 function renderCart(){
-  const w=$('#cartItems');       // contenido modal
-  const s=$('#sideCartItems');   // carrito lateral
+  const w=$('#cartItems');
+  const s=$('#sideCartItems');
   w.innerHTML='';
   s.innerHTML='';
 
   let sub=0;
-  // Productos pagados
   for(const id in cart){
     const it=MENU.find(m=>m.id==id),
           q = cart[id];
@@ -699,7 +710,6 @@ function renderCart(){
     sub+=it.price*q;
   }
 
-  // Productos de recompensa (precio 0)
   for(const rid in cartRewards){
     const it=MENU.find(m=>m.id==rid),
           q=cartRewards[rid];
@@ -753,7 +763,7 @@ $('#couponBtn').onclick=e=>{
   calc();
 };
 
-/* Geocode DELIVERY (dirección específica del pedido) */
+/* Geocode DELIVERY */
 $('#delGeoBtn').onclick=async()=>{
   const addr=$('#delAddr').value.trim();
   if(!addr)return alert('Ingresa dirección de entrega');
@@ -767,7 +777,7 @@ $('#delGeoBtn').onclick=async()=>{
   calc();
 };
 
-/* CUÁNDO QUIERES EL PEDIDO (now / later) */
+/* CUÁNDO QUIERES EL PEDIDO */
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   if(whenType==='later'){
@@ -779,15 +789,14 @@ document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   }
 });
 
-/* Definir ventanas de horario por día */
+/* Ventanas de horario */
 function getOpenWindowsForDay(dayIdx){
-  // 0=domingo, 3=mié,4=jue,5=vie,6=sáb
-  if(dayIdx===0) return [{start:12,end:16}];  // 12:00-16:00
-  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}]; // 18:00-23:00
+  if(dayIdx===0) return [{start:12,end:16}];
+  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}];
   return [];
 }
 
-/* Construye lista de fechas y horarios (cada 15 min) */
+/* Construir opciones de programación (7 días) */
 function buildScheduleOptions(){
   const dateSel = $('#schedDate');
   const timeSel = $('#schedTime');
@@ -825,7 +834,6 @@ function buildScheduleOptions(){
   rebuildTimeOptions();
 }
 
-/* Recalcular horarios disponibles de acuerdo a la fecha seleccionada */
 function rebuildTimeOptions(){
   const dateSel = $('#schedDate');
   const timeSel = $('#schedTime');
@@ -877,57 +885,31 @@ function rebuildTimeOptions(){
   const firstEnabled = Array.from(timeSel.options).find(o=>!o.disabled && o.value);
   if(firstEnabled) timeSel.value = firstEnabled.value;
 
-  $('#scheduleHint').textContent='Solo se muestran horarios dentro del horario de atención. Mínimo 25 min de anticipación.';
+  $('#scheduleHint').textContent='Solo horarios en horario de atención. Mínimo 25 min de anticipación.';
 }
 
-/* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
+/* Horario válido */
 function isInSchedule(dateObj){
-  const day=dateObj.getDay(); // 0=domingo
+  const day=dateObj.getDay();
   const hour=dateObj.getHours();
   const min=dateObj.getMinutes();
 
-  // domingo 12-16
   if(day===0){
     return hour>=12 && (hour<16 || (hour===16 && min===0));
   }
-
-  // miércoles=3, jueves=4, viernes=5, sábado=6 → 18-23
   if(day>=3 && day<=6){
     return hour>=18 && (hour<23 || (hour===23 && min===0));
   }
-
   return false;
 }
 
-/* Función para saber si está abierto AHORA */
+/* Abierto ahora */
 function isOpenNow(){
   const now=new Date();
   return isInSchedule(now);
 }
 
-function calc(){
-  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
-  let del=0,km=0;
-
-  if(delType==='delivery' && orderDelivery){
-    del=orderDelivery.fee;
-    km=orderDelivery.km;
-  }
-
-  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
-  $('#del').textContent=fmt(del);
-  $('#km').textContent=km;
-
-  const disc=code?Math.round(sub*CODE[code]):0;
-  $('#discRow').style.display=disc?'block':'none';
-  $('#disc').textContent=fmt(disc);
-
-  const tot=sub+del-disc;
-  $('#tot').textContent=fmt(tot);
-  buildLink(tot);
-} 
-
-/* Render lista de recompensas */
+/* Puntos / recompensas */
 function renderRewards(){
   const box = $('#rewardsList');
   box.innerHTML='';
@@ -947,7 +929,6 @@ function renderRewards(){
   });
 }
 
-/* Click en recompensas */
 $('#rewardsList').onclick=e=>{
   const btn=e.target.closest('button[data-rid]');
   if(!btn || !user) return;
@@ -956,7 +937,6 @@ $('#rewardsList').onclick=e=>{
   if(!reward) return;
   if((user.points||0) < reward.pts) return;
 
-  // Descontar puntos y agregar producto gratis
   user.points = (user.points||0) - reward.pts;
   users[user.email]=user;
   saveUsers();
@@ -966,191 +946,198 @@ $('#rewardsList').onclick=e=>{
   renderCart();
 };
 
-/* Construir enlace de WhatsApp + guardar pedido en Firestore */
-function buildLink(total){
-  $('#checkout').onclick = async e => {
-    if (!user) {
-      e.preventDefault();
-      $('#cartModal').classList.remove('active');
-      $('#cartModal').classList.add('wait-login');
-      authM.classList.add('active');
-      return;
-    }
-    if (total <= 0) {
-      e.preventDefault();
-      alert("Tu pedido no tiene productos.");
-      return;
-    }
+/* Cálculo totales */
+function calc(){
+  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
+  let del=0,km=0;
 
-    // Validación delivery
-    if (delType === 'delivery') {
-      if (!orderDelivery || !orderDelivery.address) {
-        e.preventDefault();
-        alert("Debes confirmar la dirección de entrega.");
-        return;
-      }
-    }
+  if(delType==='delivery' && orderDelivery){
+    del=orderDelivery.fee;
+    km=orderDelivery.km;
+  }
 
-    const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
-    const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
+  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
+  $('#del').textContent=fmt(del);
+  $('#km').textContent=km;
 
-    // Validación tiempo mínimo 25 min
-    const now = new Date();
-    const minWaitMs = 25 * 60 * 1000;
-    const minDate = new Date(now.getTime() + minWaitMs);
-    let scheduledDate = null;
+  const disc=code?Math.round(sub*CODE[code]):0;
+  $('#discRow').style.display=disc?'block':'none';
+  $('#disc').textContent=fmt(disc);
 
-    if (whenType === 'later') {
-      const dVal = $('#schedDate').value;
-      const tVal = $('#schedTime').value;
-
-      if (!dVal || !tVal) {
-        e.preventDefault();
-        alert("Selecciona fecha y hora para programar tu pedido.");
-        return;
-      }
-
-      const [y,m,d] = dVal.split('-').map(Number);
-      const [hh,mm] = tVal.split(':').map(Number);
-      const dt = new Date(y,m-1,d,hh,mm,0);
-      scheduledDate = dt;
-
-      if (dt < minDate) {
-        e.preventDefault();
-        alert("El pedido debe programarse al menos 25 minutos más tarde.");
-        return;
-      }
-      if (!isInSchedule(dt)) {
-        e.preventDefault();
-        alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-        return;
-      }
-    } else {
-      if (!isOpenNow()) {
-        e.preventDefault();
-        alert("Estamos cerrados ahora.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-        return;
-      }
-    }
-
-    const comment = ($('#orderComment').value || '').trim();
-
-    // Puntos ganados
-    const earn=Math.floor(total*RATE);
-    user.pending=earn;
-    user.pendingAt=Date.now();
-    users[user.email]=user;
-    saveUsers();
-
-    // ============================
-    //   GUARDAR PEDIDO EN FIRESTORE
-    // ============================
-    const items = Object.entries(cart).map(([id,q])=>{
-      const it = MENU.find(m=>m.id==id);
-      return {
-        id:+id,
-        name:it?.name || '',
-        qty:q,
-        unitPrice:it?.price || 0,
-        lineTotal:(it?.price || 0)*q
-      };
-    });
-
-    const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
-      const it = MENU.find(m=>m.id==id);
-      return {
-        id:+id,
-        name:it?.name || '',
-        qty:q,
-        reward:true
-      };
-    });
-
-    const orderData = {
-      items,
-      rewards:rewardsItems,
-      subtotal:sub,
-      deliveryCost:delCost,
-      total,
-      deliveryType:delType,
-      deliveryAddress:delType==='delivery' && orderDelivery ? orderDelivery.address : null,
-      deliveryKm:delType==='delivery' && orderDelivery ? orderDelivery.km : null,
-      comment,
-      whenType,
-      scheduledAt: scheduledDate ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      user:{
-        email:user.email,
-        nombre:user.nombre,
-        apellido:user.apellido,
-        phone:user.phone,
-        address:user.address || null
-      },
-      status:'pendiente',
-      source:'web'
-    };
-
-    try{
-      await db.collection('orders').add(orderData);
-    }catch(err){
-      console.error('Error guardando pedido:',err);
-      // No bloqueamos el envío de WhatsApp si falla Firestore
-    }
-
-    // ============================
-    //   CONSTRUCCIÓN DEL MENSAJE
-    // ============================
-    let msg = `Hola Mamma Maggi!%0APedido:%0A`;
-
-    // Productos normales
-    for (const id in cart) {
-      const it = MENU.find(m => m.id == id);
-      msg += `${cart[id]} x ${it.name}%0A`;
-    }
-
-    // Recompensas
-    for (const rid in cartRewards) {
-      const it = MENU.find(m => m.id == rid);
-      msg += `${cartRewards[rid]} x ${it.name} (canje)%0A`;
-    }
-
-    // Total
-    msg += `%0ATotal: $${fmt(total)}`;
-
-    // Fecha / hora
-    if (whenType === 'later' && scheduledDate) {
-      const dVal = $('#schedDate').value;
-      const tVal = $('#schedTime').value;
-      msg += `%0APara: ${dVal} ${tVal}`;
-    } else {
-      msg += `%0APara: Lo antes posible (hoy)`;
-    }
-
-    // Tipo de entrega
-    if (delType === 'delivery') {
-      msg += `%0AModalidad: Delivery`;
-      msg += `%0AEntrega: ${orderDelivery?.address || ''}`;
-    } else {
-      msg += `%0AModalidad: Retiro en local`;
-    }
-
-    // Tiempo mínimo de espera
-    msg += `%0ATiempo de espera mínimo: 25 minutos`;
-
-    // Comentario opcional
-    if (comment) msg += `%0AComentario: ${comment}`;
-
-    // Teléfono del cliente
-    msg += `%0ATeléfono cliente: ${user.phone || ''}`;
-
-    const waURL = `https://wa.me/${PHONE}?text=${msg}`;
-    e.currentTarget.href = waURL;
-  };
+  const tot=sub+del-disc;
+  $('#tot').textContent=fmt(tot);
 }
 
-// ===========================
-//   PANEL ADMIN (LECTURA)
-// ===========================
+/* CHECKOUT: WhatsApp + Firestore */
+$('#checkout').onclick = async e => {
+  const total=parseInt($('#tot').textContent.replace(/\./g,''))||0;
+
+  if (!user){
+    e.preventDefault();
+    $('#cartModal').classList.remove('active');
+    $('#cartModal').classList.add('wait-login');
+    authM.classList.add('active');
+    return;
+  }
+  if (total <= 0){
+    e.preventDefault();
+    alert("Tu pedido no tiene productos.");
+    return;
+  }
+
+  if(delType==='delivery'){
+    if(!orderDelivery || !orderDelivery.address){
+      e.preventDefault();
+      alert("Debes confirmar la dirección de entrega.");
+      return;
+    }
+  }
+
+  const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
+  const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
+
+  const now = new Date();
+  const minWaitMs = 25*60*1000;
+  const minDate = new Date(now.getTime() + minWaitMs);
+  let scheduledDate = null;
+
+  if(whenType==='later'){
+    const dVal = $('#schedDate').value;
+    const tVal = $('#schedTime').value;
+
+    if (!dVal || !tVal){
+      e.preventDefault();
+      alert("Selecciona fecha y hora para programar tu pedido.");
+      return;
+    }
+
+    const [y,m,d] = dVal.split('-').map(Number);
+    const [hh,mm] = tVal.split(':').map(Number);
+    const dt = new Date(y,m-1,d,hh,mm,0);
+    scheduledDate = dt;
+
+    if (dt < minDate){
+      e.preventDefault();
+      alert("El pedido debe programarse al menos 25 minutos más tarde.");
+      return;
+    }
+    if (!isInSchedule(dt)){
+      e.preventDefault();
+      alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+      return;
+    }
+  }else{
+    if(!isOpenNow()){
+      e.preventDefault();
+      alert("Estamos cerrados ahora.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
+      return;
+    }
+  }
+
+  const comment = ($('#orderComment').value || '').trim();
+
+  // Puntos
+  const earn=Math.floor(total*RATE);
+  user.pending=earn;
+  user.pendingAt=Date.now();
+  users[user.email]=user;
+  saveUsers();
+
+  // Guardar pedido en Firestore (si hay db)
+  const items = Object.entries(cart).map(([id,q])=>{
+    const it = MENU.find(m=>m.id==id);
+    return {
+      id:+id,
+      name:it?.name || '',
+      qty:q,
+      unitPrice:it?.price || 0,
+      lineTotal:(it?.price || 0)*q
+    };
+  });
+
+  const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
+    const it = MENU.find(m=>m.id==id);
+    return {
+      id:+id,
+      name:it?.name || '',
+      qty:q,
+      reward:true
+    };
+  });
+
+  const orderData = {
+    items,
+    rewards:rewardsItems,
+    subtotal:sub,
+    deliveryCost:delCost,
+    total,
+    deliveryType:delType,
+    deliveryAddress:delType==='delivery' && orderDelivery ? orderDelivery.address : null,
+    deliveryKm:delType==='delivery' && orderDelivery ? orderDelivery.km : null,
+    comment,
+    whenType,
+    scheduledAt: scheduledDate && db ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
+    createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : null,
+    user:{
+      email:user.email,
+      nombre:user.nombre,
+      apellido:user.apellido,
+      phone:user.phone,
+      address:user.address || null
+    },
+    status:'pendiente',
+    source:'web'
+  };
+
+  if(db){
+    try{
+      await db.collection('orders').add(orderData);
+      console.log("Pedido guardado en Firestore");
+    }catch(err){
+      console.error("Error guardando pedido:", err);
+    }
+  }else{
+    console.warn("No se guarda en Firestore (db nula)");
+  }
+
+  // Mensaje WhatsApp en texto normal
+  let msg = "Hola Mamma Maggi!\nPedido:\n";
+
+  for(const id in cart){
+    const it = MENU.find(m=>m.id==id);
+    msg += `${cart[id]} x ${it.name}\n`;
+  }
+  for(const rid in cartRewards){
+    const it = MENU.find(m=>m.id==rid);
+    msg += `${cartRewards[rid]} x ${it.name} (canje)\n`;
+  }
+
+  msg += `\nTotal: $${fmt(total)}\n`;
+
+  if(whenType==='later' && scheduledDate){
+    const dVal = $('#schedDate').value;
+    const tVal = $('#schedTime').value;
+    msg += `Para: ${dVal} ${tVal}\n`;
+  }else{
+    msg += `Para: Lo antes posible (hoy)\n`;
+  }
+
+  if(delType==='delivery'){
+    msg += `Modalidad: Delivery\n`;
+    msg += `Entrega: ${orderDelivery?.address || ''}\n`;
+  }else{
+    msg += `Modalidad: Retiro en local\n`;
+  }
+
+  msg += `Tiempo de espera mínimo: 25 minutos\n`;
+  if(comment) msg += `Comentario: ${comment}\n`;
+  msg += `Teléfono cliente: ${user.phone || ''}`;
+
+  const waURL = `https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
+  e.currentTarget.href = waURL;
+};
+
+/* PANEL ADMIN */
 $('#adminEnter').onclick = ()=>{
   const val = $('#adminPass').value;
   if(val === ADMIN_PASS){
@@ -1166,6 +1153,10 @@ $('#refreshOrders').onclick = loadOrders;
 
 function loadOrders(){
   const container = $('#ordersList');
+  if(!db){
+    container.innerHTML='<p style="color:#f88;">Firestore no está disponible.</p>';
+    return;
+  }
   container.innerHTML='Cargando pedidos...';
 
   db.collection('orders')
@@ -1211,10 +1202,12 @@ function loadOrders(){
     });
 }
 
-// ===========================
-//   INICIO
-// ===========================
+/* INICIO */
 updateUserUI();
+</script>
+</body>
+</html>
+
 </script>
 </body>
 </html>
