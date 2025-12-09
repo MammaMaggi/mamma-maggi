@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Mamma Maggi | Pedidos Online</title>
+<title>Mamma Maggi | Pedidos Online</title>
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
@@ -18,12 +18,66 @@ header h1{font-size:2.3rem;letter-spacing:2px}
 #cartBtn{position:absolute;right:1rem;top:1rem;width:42px;height:42px;border:2px solid var(--fg);border-radius:50%;background:none;color:var(--fg);display:flex;align-items:center;justify-content:center}
 #cartBtn span{font-size:.8rem}
 #userInfo{font-size:.8rem;opacity:.8}
-section{max-width:960px;margin:auto;padding:2rem 1rem}
+
+/* layout principal: menú + carrito lateral */
+.main-layout{
+  max-width:1200px;
+  margin:auto;
+  padding:2rem 1rem;
+  display:grid;
+  grid-template-columns:minmax(0,2fr) 320px;
+  gap:1.5rem;
+  align-items:flex-start;
+}
+
+.main-layout section{
+  max-width:100%;
+  margin:0;
+  padding:0;
+}
+
 section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
+
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
 .card{background:var(--card);border-radius:8px;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
 .price{font-weight:700}
 .card button{margin-top:auto;padding:.6rem;border-radius:4px;background:var(--accent);color:#fff;font-weight:700}
+
+/* carrito lateral */
+#sideCart{
+  background:var(--card);
+  border-radius:8px;
+  padding:1rem;
+  position:sticky;
+  top:1rem;
+}
+#sideCart h3{
+  margin-bottom:.6rem;
+  font-size:1.2rem;
+}
+#sideCartItems{
+  font-size:.9rem;
+  display:flex;
+  flex-direction:column;
+  gap:.35rem;
+  margin-bottom:.6rem;
+}
+.side-line{
+  display:flex;
+  justify-content:space-between;
+  gap:.4rem;
+}
+.side-empty{
+  opacity:.7;
+  font-size:.85rem;
+}
+#sideTotal{
+  text-align:right;
+  font-weight:700;
+  font-size:.95rem;
+}
+
+/* modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .3s}
 .modal.active{opacity:1;visibility:visible}
 .box{background:var(--card);border-radius:8px;padding:1.4rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
@@ -36,6 +90,16 @@ input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#2
 .qty button{width:24px;height:24px;border:1px solid var(--fg);background:none;color:var(--fg);border-radius:4px;font-weight:700}
 .summary{text-align:right;font-size:1.05rem;font-weight:700}
 #map{height:220px;border-radius:6px;margin-top:.5rem;display:none}
+
+@media(max-width:800px){
+  .main-layout{
+    grid-template-columns:1fr;
+  }
+  #sideCart{
+    position:static;
+    margin-top:1rem;
+  }
+}
 </style>
 </head>
 <body>
@@ -45,10 +109,24 @@ input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#2
 <div id="userInfo"></div>
 <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
 </header>
-<section>
-<h2>Nuestro Menú</h2>
-<div class="menu-grid" id="menuGrid"></div>
-</section>
+
+<!-- layout: menú + carrito lateral -->
+<div class="main-layout">
+  <section>
+    <h2>Nuestro Menú</h2>
+    <div class="menu-grid" id="menuGrid"></div>
+  </section>
+
+  <aside id="sideCart">
+    <h3>Tu pedido</h3>
+    <div id="sideCartItems"></div>
+    <p id="sideTotal">Subtotal: $0</p>
+    <button class="btn" id="openCartFromSide" style="width:100%;margin-top:.5rem">
+      Ver detalle y finalizar
+    </button>
+  </aside>
+</div>
+
 <!-- Auth Modal -->
 <div class="modal" id="authModal"><div class="box">
 <button class="close" id="closeAuth">✕</button>
@@ -68,57 +146,294 @@ input,select{padding:.7rem;border-radius:4px;border:1px solid #333;background:#2
 <button class="btn" id="authSubmit">Entrar</button>
 <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">¿No tienes cuenta? Regístrate</p>
 </form></div></div>
+
 <!-- Cart Modal -->
 <div class="modal" id="cartModal"><div class="box">
 <button class="close" id="closeCart">✕</button>
 <h2>Tu Pedido</h2>
 <div id="cartItems"></div>
-<div><label><input type="radio" name="delType" value="pickup" checked /> Retiro</label>  <label><input type="radio" name="delType" value="delivery"/> Delivery</label></div>
+<div><label><input type="radio" name="delType" value="pickup" checked /> Retiro</label>  <label><input type="radio" name="delType" value="delivery"/> Delivery</label></div>
 <div style="margin-top:.5rem"><label>Código</label><div style="display:flex;gap:.4rem;margin-top:.3rem"><input id="coupon" style="flex:1"/><button class="btn" id="couponBtn" style="padding:.5rem .8rem">Aplicar</button></div><small id="couponMsg"></small></div>
 <div id="ptsBox" style="display:none"><p>Puntos: <span id="pts">0</span></p><label><input type="checkbox" id="redeem"/> Usar pts</label></div>
 <p class="summary">Subtotal: $<span id="sub">0</span></p>
-<p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
+<p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
 <p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
 <p class="summary" id="redRow" style="display:none">Puntos: –$<span id="red">0</span></p>
 <p class="summary">Total: $<span id="tot">0</span></p>
 <a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
 </div></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const MENU=[{id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},{id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},{id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990},{id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500},{id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500},{id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, chapiñones, cebolla morada y pimentón.',price:11990},{id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990},{id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500},{id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500},{id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990},{id:11,name:'Bernarda',desc:'Salsa de tomate, mozzarella, queso azul, nueces, miel, ricotta y albahaca.',price:10990},{id:12,name:'Bacon No Bacon',desc:'Salsa de tomate, mozzarella, proteina de soja sabor tocino y cebolla.',price:10990},{id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},{id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},{id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},{id:16,name:'Tiramisú',desc:'',price:4990},{id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},{id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}];
+const MENU=[
+{id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
+{id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
+{id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990},
+{id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500},
+{id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500},
+{id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, chapiñones, cebolla morada y pimentón.',price:11990},
+{id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990},
+{id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500},
+{id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500},
+{id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990},
+{id:11,name:'Bernarda',desc:'Salsa de tomate, mozzarella, queso azul, nueces, miel, ricotta y albahaca.',price:10990},
+{id:12,name:'Bacon No Bacon',desc:'Salsa de tomate, mozzarella, proteina de soja sabor tocino y cebolla.',price:10990},
+{id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},
+{id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},
+{id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},
+{id:16,name:'Tiramisú',desc:'',price:4990},
+{id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
+{id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}
+];
 const ORIGIN=[-38.731229, -72.626507];
 const CODE={MAGGI10:.1};
 const PHONE='56949486579';
 const RATE=.001,VAL=100;
-const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
+const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
 const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
+
 /* Storage */
 const users=JSON.parse(localStorage.getItem('users')||'{}');
 function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
 /* Points release check */
 function releasePoints(u){if(u.pending&&Date.now()-u.pendingAt>=300000){u.points=(u.points||0)+u.pending;u.pending=0;saveUsers();}}
+
 /* State */
 let user=null,cart={},delType='pickup',code=null,redeem=false;
+
 /* Menu */
-MENU.forEach(i=>{const c=document.createElement('div');c.className='card';c.innerHTML=`<h3>${i.name}</h3><p>${i.desc}</p><span class='price'>$${fmt(i.price)}</span><button class='btn' data-id='${i.id}'>Agregar</button>`;$('#menuGrid').appendChild(c);});
-$('#menuGrid').onclick=e=>{if(e.target.dataset.id){const id=+e.target.dataset.id;cart[id]=(cart[id]||0)+1;updateCount();}};
-function updateCount(){$('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);} /* Auth modal */
-const authM=$('#authModal');$('#loginBtn').onclick=()=>authM.classList.add('active');$('#closeAuth').onclick=()=>authM.classList.remove('active');
-let loginMode=true;$('#toggleAuth').onclick=()=>{loginMode=!loginMode;$('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';$('#authSubmit').textContent=loginMode?'Entrar':'Registrar';$('#extra').style.display=loginMode?'none':'block';};
+MENU.forEach(i=>{
+  const c=document.createElement('div');
+  c.className='card';
+  c.innerHTML=`<h3>${i.name}</h3><p>${i.desc}</p><span class='price'>$${fmt(i.price)}</span><button class='btn' data-id='${i.id}'>Agregar</button>`;
+  $('#menuGrid').appendChild(c);
+});
+
+// al hacer click en "Agregar", sumamos y actualizamos carrito lateral
+$('#menuGrid').onclick=e=>{
+  if(e.target.dataset.id){
+    const id=+e.target.dataset.id;
+    cart[id]=(cart[id]||0)+1;
+    updateCount();
+    renderCart(); // actualiza modal + carrito lateral
+  }
+};
+
+function updateCount(){
+  $('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
+}
+
+/* Auth modal */
+const authM=$('#authModal');
+$('#loginBtn').onclick=()=>authM.classList.add('active');
+$('#closeAuth').onclick=()=>authM.classList.remove('active');
+let loginMode=true;
+$('#toggleAuth').onclick=()=>{
+  loginMode=!loginMode;
+  $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
+  $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
+  $('#extra').style.display=loginMode?'none':'block';
+};
+
 /* Geocode */
-function toRad(d){return d*Math.PI/180;}const dist=(a,b,c,d)=>{const R=6371;const dLat=toRad(c-a),dLon=toRad(d-b);const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));};
-$('#geoBtn').onclick=async()=>{const addr=$('#addr').value.trim();if(!addr)return alert('Ingresa dirección');const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());if(!d[0])return alert('No encontrada');const {lat,lon}=d[0];const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;const fee=FEE(km);$('#distText').textContent=`${km} km • $${fmt(fee)}`;$('#map').style.display='block';if(!window._map){_map=L.map('map').setView([lat,lon],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);} _map.setView([lat,lon],13); if(window._mk)_map.removeLayer(_mk); _mk=L.marker([lat,lon]).addTo(_map);if (!user) user = {};                     // crea el objeto si aún es null
-Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });};
-$('#authForm').onsubmit=e=>{e.preventDefault();const email=$('#email').value.trim().toLowerCase(),pass=$('#pass').value;if(loginMode){if(!users[email]||users[email].pass!==pass)return alert('Credenciales');user={...users[email]};releasePoints(user);}else{if(!user||!user.km)return alert('Confirma dirección');user={...user,email,pass,nombre:$('#name').value.trim(),apellido:$('#last').value.trim(),phone:$('#phone').value.trim(),points:0,pending:0};users[email]=user;saveUsers();}$('#userInfo').textContent=`Hola, ${user.nombre} (${user.points} pts)`;$('#pts').textContent=user.points;$('#ptsBox').style.display=user.points?'block':'none';authM.classList.remove('active');if($('#cartModal').classList.contains('wait-login')){$('#cartModal').classList.remove('wait-login');calc();$('#cartModal').classList.add('active');}};
+function toRad(d){return d*Math.PI/180;}
+const dist=(a,b,c,d)=>{
+  const R=6371;
+  const dLat=toRad(c-a),dLon=toRad(d-b);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+};
+
+$('#geoBtn').onclick=async()=>{
+  const addr=$('#addr').value.trim();
+  if(!addr)return alert('Ingresa dirección');
+  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
+  if(!d[0])return alert('No encontrada');
+  const {lat,lon}=d[0];
+  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
+  const fee=FEE(km);
+  $('#distText').textContent=`${km} km • $${fmt(fee)}`;
+  $('#map').style.display='block';
+  if(!window._map){
+    _map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
+  }
+  _map.setView([lat,lon],13);
+  if(window._mk)_map.removeLayer(_mk);
+  _mk=L.marker([lat,lon]).addTo(_map);
+  if (!user) user = {};
+  Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
+};
+
+$('#authForm').onsubmit=e=>{
+  e.preventDefault();
+  const email=$('#email').value.trim().toLowerCase(),
+        pass=$('#pass').value;
+  if(loginMode){
+    if(!users[email]||users[email].pass!==pass)return alert('Credenciales');
+    user={...users[email]};
+    releasePoints(user);
+  }else{
+    if(!user||!user.km)return alert('Confirma dirección');
+    user={...user,email,pass,
+      nombre:$('#name').value.trim(),
+      apellido:$('#last').value.trim(),
+      phone:$('#phone').value.trim(),
+      points:0,pending:0
+    };
+    users[email]=user;
+    saveUsers();
+  }
+  $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points} pts)`;
+  $('#pts').textContent=user.points;
+  $('#ptsBox').style.display=user.points?'block':'none';
+  authM.classList.remove('active');
+  if($('#cartModal').classList.contains('wait-login')){
+    $('#cartModal').classList.remove('wait-login');
+    calc();
+    $('#cartModal').classList.add('active');
+  }
+};
+
 /* Cart modal */
-$('#cartBtn').onclick=()=>{renderCart();$('#cartModal').classList.add('active');};$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
-$('#cartItems').onclick=e=>{if(e.target.closest('.qty')){const id=+e.target.closest('.qty').dataset.id;if(e.target.classList.contains('inc'))cart[id]++;if(e.target.classList.contains('dec'))cart[id]=Math.max(0,cart[id]-1);if(!cart[id])delete cart[id];updateCount();renderCart();}};
-function renderCart(){const w=$('#cartItems');w.innerHTML='';let sub=0;for(const id in cart){const it=MENU.find(m=>m.id==id),q=cart[id];w.innerHTML+=`<div class='cart-item'><span>${it.name}</span><div class='qty' data-id='${id}'><button class='dec'>-</button><span>${q}</span><button class='inc'>+</button></div><span>$${fmt(it.price*q)}</span></div>`;sub+=it.price*q;}$('#sub').textContent=fmt(sub);calc();}
-$('input[name="delType"]').forEach(r=>r.onchange=e=>{delType=e.target.value;calc();});
-$('#couponBtn').onclick=e=>{e.preventDefault();const c=$('#coupon').value.trim().toUpperCase();code=CODE[c]?c:null;$('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';calc();};
-$('#redeem').onchange=e=>{redeem=e.target.checked;calc();};
-function calc(){const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;let del=0,km=0;if(delType==='delivery'&&user){del=user.fee;km=user.km;}$('#delRow').style.display=delType==='delivery'?'block':'none';$('#del').textContent=fmt(del);$('#km').textContent=km;const disc=code?Math.round(sub*CODE[code]):0;$('#discRow').style.display=disc?'block':'none';$('#disc').textContent=fmt(disc);if(!user||!user.points){redeem=false;$('#redeem').checked=false;}$('#redeem').disabled=!user||!user.points;const red=redeem?Math.min(user.points*VAL,sub+del-disc):0;$('#redRow').style.display=red?'block':'none';$('#red').textContent=fmt(red);const tot=sub+del-disc-red;$('#tot').textContent=fmt(tot);buildLink(tot,red);} 
-function buildLink(total,red){$('#checkout').onclick=e=>{if(!user){e.preventDefault();$('#cartModal').classList.remove('active');$('#cartModal').classList.add('wait-login');authM.classList.add('active');return;}if(total<=0){e.preventDefault();return;}const earn=Math.floor(total*RATE);user.pending=earn;user.pendingAt=Date.now();saveUsers();let msg=`Hola Mamma Maggi!%0APedido:%0A`;for(const id in cart){const it=MENU.find(m=>m.id==id);msg+=`${cart[id]} x ${it.name}%0A`;}msg+=`%0ATotal: $${fmt(total)}`;msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;};}
+$('#cartBtn').onclick=()=>{
+  renderCart();
+  $('#cartModal').classList.add('active');
+};
+$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
+
+// botón "Ver detalle y finalizar" del carrito lateral
+$('#openCartFromSide').onclick=()=>{
+  renderCart();
+  $('#cartModal').classList.add('active');
+};
+
+$('#cartItems').onclick=e=>{
+  if(e.target.closest('.qty')){
+    const id=+e.target.closest('.qty').dataset.id;
+    if(e.target.classList.contains('inc'))cart[id]++;
+    if(e.target.classList.contains('dec'))cart[id]=Math.max(0,cart[id]-1);
+    if(!cart[id])delete cart[id];
+    updateCount();
+    renderCart();
+  }
+};
+
+function renderCart(){
+  const w=$('#cartItems');       // contenido modal
+  const s=$('#sideCartItems');   // carrito lateral
+  w.innerHTML='';
+  s.innerHTML='';
+
+  let sub=0;
+  for(const id in cart){
+    const it=MENU.find(m=>m.id==id),
+          q = cart[id];
+
+    // línea en modal
+    w.innerHTML+=`
+      <div class='cart-item'>
+        <span>${it.name}</span>
+        <div class='qty' data-id='${id}'>
+          <button class='dec'>-</button>
+          <span>${q}</span>
+          <button class='inc'>+</button>
+        </div>
+        <span>$${fmt(it.price*q)}</span>
+      </div>`;
+
+    // línea en carrito lateral
+    s.innerHTML+=`
+      <div class="side-line">
+        <span>${q} x ${it.name}</span>
+        <span>$${fmt(it.price*q)}</span>
+      </div>`;
+
+    sub+=it.price*q;
+  }
+
+  if(!Object.keys(cart).length){
+    s.innerHTML='<p class="side-empty">Aún no agregas nada 🍕</p>';
+  }
+
+  $('#sub').textContent=fmt(sub);
+  $('#sideTotal').textContent='Subtotal: $'+fmt(sub);
+  calc();
+}
+
+document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
+  delType=e.target.value;
+  calc();
+});
+$('#couponBtn').onclick=e=>{
+  e.preventDefault();
+  const c=$('#coupon').value.trim().toUpperCase();
+  code=CODE[c]?c:null;
+  $('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';
+  calc();
+};
+$('#redeem').onchange=e=>{
+  redeem=e.target.checked;
+  calc();
+};
+
+function calc(){
+  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
+  let del=0,km=0;
+  if(delType==='delivery'&&user){
+    del=user.fee;
+    km=user.km;
+  }
+  $('#delRow').style.display=delType==='delivery'?'block':'none';
+  $('#del').textContent=fmt(del);
+  $('#km').textContent=km;
+
+  const disc=code?Math.round(sub*CODE[code]):0;
+  $('#discRow').style.display=disc?'block':'none';
+  $('#disc').textContent=fmt(disc);
+
+  if(!user||!user.points){
+    redeem=false;
+    $('#redeem').checked=false;
+  }
+  $('#redeem').disabled=!user||!user.points;
+
+  const red=redeem?Math.min(user.points*VAL,sub+del-disc):0;
+  $('#redRow').style.display=red?'block':'none';
+  $('#red').textContent=fmt(red);
+
+  const tot=sub+del-disc-red;
+  $('#tot').textContent=fmt(tot);
+  buildLink(tot,red);
+} 
+
+function buildLink(total,red){
+  $('#checkout').onclick=e=>{
+    if(!user){
+      e.preventDefault();
+      $('#cartModal').classList.remove('active');
+      $('#cartModal').classList.add('wait-login');
+      authM.classList.add('active');
+      return;
+    }
+    if(total<=0){
+      e.preventDefault();
+      return;
+    }
+    const earn=Math.floor(total*RATE);
+    user.pending=earn;
+    user.pendingAt=Date.now();
+    saveUsers();
+    let msg=`Hola Mamma Maggi!%0APedido:%0A`;
+    for(const id in cart){
+      const it=MENU.find(m=>m.id==id);
+      msg+=`${cart[id]} x ${it.name}%0A`;
+    }
+    msg+=`%0ATotal: $${fmt(total)}`;
+    msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;
+    e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
+  };
+}
 </script>
 </body>
 </html>
