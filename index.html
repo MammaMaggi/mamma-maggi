@@ -7,9 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-<!-- Firebase (compat) -->
+<!-- Firebase (solo app + firestore compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
@@ -417,7 +416,7 @@ textarea{min-height:70px;resize:vertical}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ===========================
-//  FIREBASE INIT (FIRESTORE + AUTH)
+//  FIREBASE INIT (FIRESTORE)
 // ===========================
 const firebaseConfig = {
   apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
@@ -429,7 +428,6 @@ const firebaseConfig = {
   measurementId: "G-L8ZT1KN1YC"
 };
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db   = firebase.firestore();
 
 // ===========================
@@ -466,7 +464,7 @@ const CODE={
 };
 
 const PHONE='56949486579';
-const RATE=.001; // regla puntos: 1 punto por cada $1000 aprox
+const RATE=.001; // puntos por peso
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
 const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 
@@ -478,7 +476,6 @@ const REWARDS=[
 
 const ADMIN_PASS = "mamma2025";
 
-/* Normalizar teléfono (deja solo dígitos) */
 function normalizePhone(phone){
   return phone.replace(/\D/g,'');
 }
@@ -596,8 +593,9 @@ function updateUserUI(){
     $('#pts').textContent=user.points||0;
     $('#ptsBox').style.display='block';
     renderRewards();
-    $('#logoutBtn').onclick = async ()=>{
-      await auth.signOut();
+    $('#logoutBtn').onclick = ()=>{
+      user=null;
+      updateUserUI();
       alert('Sesión cerrada');
     };
   }else{
@@ -607,49 +605,7 @@ function updateUserUI(){
   }
 }
 
-/* OBSERVADOR AUTH */
-auth.onAuthStateChanged(async fbUser=>{
-  if(!fbUser){
-    user=null;
-    updateUserUI();
-    return;
-  }
-  const uid = fbUser.uid;
-  const docRef = db.collection('users').doc(uid);
-
-  try{
-    const snap = await docRef.get();
-    if(snap.exists){
-      user = { uid, ...snap.data() };
-    }else{
-      const profile = {
-        email: fbUser.email,
-        nombre: fbUser.email.split('@')[0],
-        apellido: '',
-        phone: '',
-        address: '',
-        lat:null,lng:null,km:null,fee:null,
-        points:0
-      };
-      await docRef.set(profile);
-      user = { uid, ...profile };
-    }
-  }catch(err){
-    console.error('Error cargando perfil usuario:',err);
-    user = {
-      uid,
-      email: fbUser.email,
-      nombre: fbUser.email.split('@')[0],
-      apellido:'',
-      phone:'',
-      address:'',
-      points:0
-    };
-  }
-  updateUserUI();
-});
-
-/* Login / Registro */
+/* LOGIN / REGISTRO CON FIRESTORE (sin Auth) */
 $('#authForm').onsubmit = async e => {
   e.preventDefault();
   const email = $('#email').value.trim().toLowerCase();
@@ -663,10 +619,27 @@ $('#authForm').onsubmit = async e => {
   try{
     if(loginMode){
       // LOGIN
-      const cred = await auth.signInWithEmailAndPassword(email, pass);
-      console.log('Login OK:', cred.user.uid);
-      alert('Sesión iniciada correctamente 👌');
-      closeAuthModal();
+      const doc = await db.collection('users').doc(email).get();
+      if(!doc.exists){
+        alert('No existe una cuenta con ese correo. Regístrate primero.');
+      }else{
+        const data = doc.data();
+        if(data.pass !== pass){
+          alert('Contraseña incorrecta.');
+        }else{
+          user = { email, ...data };
+          updateUserUI();
+          alert('Sesión iniciada correctamente 👌');
+          closeAuthModal();
+
+          if($('#cartModal').classList.contains('wait-login')){
+            $('#cartModal').classList.remove('wait-login');
+            calc();
+            $('#cartModal').classList.add('active');
+          }
+        }
+      }
+
     }else{
       // REGISTRO
       if(pass!==pass2){
@@ -678,12 +651,21 @@ $('#authForm').onsubmit = async e => {
         return;
       }
 
-      const cred = await auth.createUserWithEmailAndPassword(email, pass);
-      const uid  = cred.user.uid;
-      console.log('Registro OK, uid:', uid);
+      const doc = await db.collection('users').doc(email).get();
+      if(doc.exists){
+        alert('Ese correo ya está registrado. Te paso a modo "Inicia sesión".');
+        loginMode = true;
+        $('#authTitle').textContent='Inicia Sesión';
+        $('#authSubmit').textContent='Entrar';
+        $('#extra').style.display='none';
+        $('#pass2').style.display='none';
+        $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
+        return;
+      }
 
       const profile = {
         email,
+        pass,
         nombre: $('#name').value.trim(),
         apellido: $('#last').value.trim(),
         phone: normalizePhone($('#phone').value),
@@ -695,41 +677,22 @@ $('#authForm').onsubmit = async e => {
         points:0
       };
 
-      await db.collection('users').doc(uid).set(profile);
-      alert('Cuenta creada. Ya estás conectado ✅');
+      await db.collection('users').doc(email).set(profile);
+      user = { email, ...profile };
+      updateUserUI();
+      alert('Cuenta creada y sesión iniciada ✅');
       closeAuthModal();
-    }
 
-    if($('#cartModal').classList.contains('wait-login')){
-      $('#cartModal').classList.remove('wait-login');
-      calc();
-      $('#cartModal').classList.add('active');
+      if($('#cartModal').classList.contains('wait-login')){
+        $('#cartModal').classList.remove('wait-login');
+        calc();
+        $('#cartModal').classList.add('active');
+      }
     }
 
   }catch(err){
-    console.error('Error auth:', err);
-    let msg = 'Error de autenticación.';
-
-    if(err.code === 'auth/user-not-found'){
-      msg = 'No existe una cuenta con ese correo. Crea tu cuenta primero.';
-    }else if(err.code === 'auth/wrong-password'){
-      msg = 'Contraseña incorrecta. Intenta de nuevo.';
-    }else if(err.code === 'auth/invalid-email'){
-      msg = 'Correo inválido.';
-    }else if(err.code === 'auth/email-already-in-use'){
-      msg = 'Ese correo ya está registrado. Te dejo en modo "Inicia sesión".';
-      // ⚠️ Cambio automático a modo login
-      loginMode = true;
-      $('#authTitle').textContent='Inicia Sesión';
-      $('#authSubmit').textContent='Entrar';
-      $('#extra').style.display='none';
-      $('#pass2').style.display='none';
-      $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
-    }else if(err.message){
-      msg = err.message;
-    }
-
-    alert(msg);
+    console.error('Error auth/firestore:', err);
+    alert('Error de autenticación: ' + (err.message || 'revisa la consola'));
   }finally{
     submitBtn.disabled = false;
     submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
@@ -1040,7 +1003,7 @@ $('#rewardsList').onclick=e=>{
   const newPoints = (user.points||0) - reward.pts;
   user.points = newPoints;
 
-  db.collection('users').doc(user.uid).update({
+  db.collection('users').doc(user.email).update({
     points:newPoints
   }).catch(err=>console.error('Error actualizando puntos:',err));
 
@@ -1117,12 +1080,13 @@ function buildLink(total){
 
     const comment = ($('#orderComment').value || '').trim();
 
+    // Sumar puntos
     const earn=Math.floor(total*RATE);
-    if(user && user.uid && earn>0){
+    if(user && earn>0){
       const newPoints = (user.points||0) + earn;
       user.points = newPoints;
       try{
-        await db.collection('users').doc(user.uid).update({
+        await db.collection('users').doc(user.email).update({
           points: newPoints
         });
       }catch(err){
@@ -1165,7 +1129,6 @@ function buildLink(total){
       scheduledAt: scheduledDate ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       user:{
-        uid:user.uid,
         email:user.email,
         nombre:user.nombre || '',
         apellido:user.apellido || '',
