@@ -36,7 +36,7 @@ header h1{font-size:2.3rem;letter-spacing:2px}
   background:none;color:var(--fg);display:flex;align-items:center;justify-content:center
 }
 #cartBtn span{font-size:.8rem}
-#userInfo{font-size:.8rem;opacity:.8}
+#userInfo{font-size:.8rem;opacity:.8;display:flex;align-items:center;gap:.4rem}
 
 /* BANNER HORARIO */
 #scheduleBanner{
@@ -349,7 +349,7 @@ textarea{min-height:70px;resize:vertical}
       <div id="map"></div>
     </div>
 
-    <button class="btn" id="authSubmit" type="submit">Entrar</button>
+    <button type="submit" class="btn" id="authSubmit">Entrar</button>
     <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">
       ¿No tienes cuenta? Regístrate
     </p>
@@ -458,12 +458,11 @@ const MENU=[
 
 const ORIGIN=[-38.731229, -72.626507];
 
-// Códigos de descuento
-const CODE = {
-  MAGGI10: 0.10,
-  BIENVENIDO15: 0.15,
-  CUMPLE20: 0.20,
-  PIZZALOVER5: 0.05
+// 🎟️ Varios códigos de descuento
+const CODE={
+  MAGGI10:0.10,
+  BIENVENIDO15:0.15,
+  AMIGOS20:0.20
 };
 
 const PHONE='56949486579';
@@ -478,37 +477,24 @@ const REWARDS=[
   {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
 ];
 
-const ADMIN_PASS = "mamma2025"; // clave admin
+const ADMIN_PASS = "mamma2025"; // clave admin para panel
 
-/* Estado */
-let user=null,
-    cart={},
-    cartRewards={}, // productos canjeados con puntos (gratis)
-    delType='pickup',
-    code=null,
-    whenType='now', // 'now' o 'later'
-    orderDelivery=null; // {address,km,fee,lat,lng}
-
-let loginMode = true; // true = login, false = registro
-let regLocation = { address:null, lat:null, lng:null, km:null, fee:null }; // datos de dirección al registrarse
-
-// ===========================
-//  UTILITARIOS
-// ===========================
+/* Normalizar teléfono (deja solo dígitos) */
 function normalizePhone(phone){
   return phone.replace(/\D/g,'');
 }
-function toRad(d){return d*Math.PI/180;}
-const dist=(a,b,c,d)=>{
-  const R=6371;
-  const dLat=toRad(c-a),dLon=toRad(d-b);
-  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
-};
 
-// ===========================
-//  RENDER MENÚ
-// ===========================
+/* Estado */
+let user=null,        // perfil completo {uid, email, nombre, points, ...}
+    cart={},
+    cartRewards={},   // productos canjeados con puntos (gratis)
+    delType='pickup',
+    code=null,
+    whenType='now',   // 'now' o 'later'
+    orderDelivery=null, // {address,km,fee,lat,lng}
+    regLocation={ address:null, lat:null, lng:null, km:null, fee:null };
+
+/* Render menú */
 MENU.forEach(i=>{
   const c=document.createElement('div');
   c.className='card';
@@ -520,6 +506,7 @@ MENU.forEach(i=>{
   $('#menuGrid').appendChild(c);
 });
 
+/* Agregar al carrito */
 $('#menuGrid').onclick=e=>{
   if(e.target.dataset.id){
     const id=+e.target.dataset.id;
@@ -533,9 +520,7 @@ function updateCount(){
   $('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
 }
 
-// ===========================
-//  AUTH MODAL
-// ===========================
+/* Auth modal */
 const authM=$('#authModal');
 const authForm=$('#authForm');
 
@@ -552,6 +537,7 @@ function closeAuthModal(){
   $('#pass2').style.display='none';
 }
 
+let loginMode=true;
 $('#toggleAuth').onclick=()=>{
   loginMode=!loginMode;
   $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
@@ -560,7 +546,15 @@ $('#toggleAuth').onclick=()=>{
   $('#pass2').style.display=loginMode?'none':'block';
 };
 
-// Geocode registro (dirección principal)
+/* Geocode registro (dirección principal) */
+function toRad(d){return d*Math.PI/180;}
+const dist=(a,b,c,d)=>{
+  const R=6371;
+  const dLat=toRad(c-a),dLon=toRad(d-b);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+};
+
 $('#geoBtn').onclick=async()=>{
   const addr=$('#addr').value.trim();
   if(!addr)return alert('Ingresa dirección');
@@ -579,79 +573,79 @@ $('#geoBtn').onclick=async()=>{
   if(window._mk)_map.removeLayer(_mk);
   _mk=L.marker([lat,lon]).addTo(_map);
 
+  // Guardamos ubicación para registro
   regLocation = { address:addr, lat:+lat, lng:+lon, km, fee };
 };
 
-// Cargar perfil de Firestore cuando hay usuario autenticado
-async function loadUserProfile(fbUser){
-  if(!fbUser){ user=null; updateUserUI(); return; }
-  const docRef = db.collection('users').doc(fbUser.uid);
-  const snap   = await docRef.get();
-  if(!snap.exists){
-    // si no existe documento, creamos uno básico
-    user = {
-      uid: fbUser.uid,
+/* Actualizar UI usuario */
+function updateUserUI(){
+  const info = $('#userInfo');
+  if(user){
+    info.innerHTML = `
+      Hola, ${user.nombre || user.email} (${user.points || 0} pts)
+      <button id="logoutBtn" style="background:none;border:1px solid #fff;border-radius:4px;padding:2px 6px;font-size:.7rem;color:#fff;cursor:pointer;">Salir</button>
+    `;
+    $('#pts').textContent=user.points||0;
+    $('#ptsBox').style.display='block';
+    renderRewards();
+    $('#logoutBtn').onclick = async ()=>{
+      await auth.signOut();
+      alert('Sesión cerrada');
+    };
+  }else{
+    info.innerHTML='';
+    $('#ptsBox').style.display='none';
+    $('#rewardsList').innerHTML='';
+  }
+}
+
+/* OBSERVADOR AUTH: cuando cambia el usuario en Firebase */
+auth.onAuthStateChanged(async fbUser=>{
+  if(!fbUser){
+    user=null;
+    updateUserUI();
+    return;
+  }
+  // cargar/crear perfil en Firestore
+  const uid = fbUser.uid;
+  const docRef = db.collection('users').doc(uid);
+  const snap = await docRef.get();
+  if(snap.exists){
+    user = { uid, ...snap.data() };
+  }else{
+    // si no hay perfil, creamos uno mínimo
+    const profile = {
       email: fbUser.email,
-      nombre: '',
+      nombre: fbUser.email.split('@')[0],
       apellido: '',
       phone: '',
       address: '',
       lat:null,lng:null,km:null,fee:null,
-      points:0,
-      pending:0,
-      pendingAt:null
+      points:0
     };
-    await docRef.set(user);
-  }else{
-    user = {
-      uid: fbUser.uid,
-      email: fbUser.email,
-      ...snap.data()
-    };
-    // liberar puntos pendientes si corresponde
-    await releasePendingPoints(docRef);
+    await docRef.set(profile);
+    user = { uid, ...profile };
   }
   updateUserUI();
-}
-
-async function releasePendingPoints(docRef){
-  if(!user.pending || !user.pendingAt) return;
-  let pendingAtDate = user.pendingAt.toDate ? user.pendingAt.toDate() : new Date(user.pendingAt);
-  const diff = Date.now() - pendingAtDate.getTime();
-  if(diff >= 300000){ // 5 minutos
-    user.points = (user.points||0) + user.pending;
-    user.pending = 0;
-    user.pendingAt = null;
-    await docRef.update({
-      points:user.points,
-      pending:0,
-      pendingAt:null
-    });
-  }
-}
-
-// Listener global de auth
-auth.onAuthStateChanged(fbUser=>{
-  if(fbUser){
-    loadUserProfile(fbUser);
-  }else{
-    user=null;
-    updateUserUI();
-  }
 });
 
-// Login / Registro con Firebase Auth
+/* Login / Registro con Firebase Auth (con mensajes claros) */
 $('#authForm').onsubmit = async e => {
   e.preventDefault();
   const email = $('#email').value.trim().toLowerCase();
   const pass  = $('#pass').value;
   const pass2 = $('#pass2').value;
+  const submitBtn = $('#authSubmit');
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = loginMode ? 'Ingresando...' : 'Registrando...';
 
   try{
     if(loginMode){
       // LOGIN
-      await auth.signInWithEmailAndPassword(email, pass);
-      // onAuthStateChanged cargará el perfil
+      const cred = await auth.signInWithEmailAndPassword(email, pass);
+      console.log('Login OK:', cred.user.uid);
+      alert('Sesión iniciada correctamente 👌');
       closeAuthModal();
     }else{
       // REGISTRO
@@ -663,8 +657,11 @@ $('#authForm').onsubmit = async e => {
         alert('Confirma tu dirección principal antes de registrarte (botón "Confirmar dirección").');
         return;
       }
+
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
       const uid  = cred.user.uid;
+      console.log('Registro OK, uid:', uid);
+
       const profile = {
         email,
         nombre: $('#name').value.trim(),
@@ -675,14 +672,12 @@ $('#authForm').onsubmit = async e => {
         lng: regLocation.lng,
         km:  regLocation.km,
         fee: regLocation.fee,
-        points:0,
-        pending:0,
-        pendingAt:null
+        points:0
       };
+
       await db.collection('users').doc(uid).set(profile);
-      // onAuthStateChanged cargará user
+      alert('Cuenta creada. Ya estás conectado ✅');
       closeAuthModal();
-      alert('Cuenta creada. Ya estás conectado.');
     }
 
     if($('#cartModal').classList.contains('wait-login')){
@@ -690,29 +685,31 @@ $('#authForm').onsubmit = async e => {
       calc();
       $('#cartModal').classList.add('active');
     }
+
   }catch(err){
-    console.error(err);
-    alert('Error de autenticación: ' + (err.message || err.code));
+    console.error('Error auth:', err);
+    let msg = 'Error de autenticación.';
+
+    if(err.code === 'auth/user-not-found'){
+      msg = 'No existe una cuenta con ese correo.';
+    }else if(err.code === 'auth/wrong-password'){
+      msg = 'Contraseña incorrecta.';
+    }else if(err.code === 'auth/invalid-email'){
+      msg = 'Correo inválido.';
+    }else if(err.code === 'auth/email-already-in-use'){
+      msg = 'Ese correo ya está registrado. Intenta iniciar sesión.';
+    }else if(err.message){
+      msg = err.message;
+    }
+
+    alert(msg);
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
   }
 };
 
-/* Actualizar UI usuario */
-function updateUserUI(){
-  if(user){
-    $('#userInfo').textContent=`Hola, ${user.nombre || user.email} (${user.points||0} pts)`;
-    $('#pts').textContent=user.points||0;
-    $('#ptsBox').style.display='block';
-    renderRewards();
-  }else{
-    $('#userInfo').textContent='';
-    $('#ptsBox').style.display='none';
-    $('#rewardsList').innerHTML='';
-  }
-}
-
-// ===========================
-//  CARRITO MODAL Y LATERAL
-// ===========================
+/* Cart modal */
 $('#cartBtn').onclick=()=>{
   renderCart();
   $('#cartModal').classList.add('active');
@@ -801,9 +798,7 @@ function renderCart(){
   calc();
 }
 
-// ===========================
-//  DELIVERY / CUPONES / HORARIOS
-// ===========================
+/* Delivery / cupones */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
   if(delType==='delivery'){
@@ -821,7 +816,7 @@ $('#couponBtn').onclick=e=>{
   e.preventDefault();
   const c=$('#coupon').value.trim().toUpperCase();
   code=CODE[c]?c:null;
-  $('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';
+  $('#couponMsg').textContent=code?`Aplicado (${c}) ✓`:'Inválido';
   calc();
 };
 
@@ -999,9 +994,7 @@ function calc(){
   buildLink(tot);
 } 
 
-// ===========================
-//  RECOMPENSAS
-// ===========================
+/* Render lista de recompensas */
 function renderRewards(){
   const box = $('#rewardsList');
   box.innerHTML='';
@@ -1021,6 +1014,7 @@ function renderRewards(){
   });
 }
 
+/* Click en recompensas */
 $('#rewardsList').onclick=e=>{
   const btn=e.target.closest('button[data-rid]');
   if(!btn || !user) return;
@@ -1031,22 +1025,19 @@ $('#rewardsList').onclick=e=>{
 
   // Descontar puntos en Firestore y agregar producto gratis
   const newPoints = (user.points||0) - reward.pts;
+  user.points = newPoints;
+
   db.collection('users').doc(user.uid).update({
     points:newPoints
-  }).then(()=>{
-    user.points = newPoints;
-    cartRewards[rid]=(cartRewards[rid]||0)+1;
-    updateUserUI();
-    renderCart();
-  }).catch(err=>{
-    console.error(err);
-    alert('No se pudo canjear puntos. Intenta de nuevo.');
-  });
+  }).catch(err=>console.error('Error actualizando puntos:',err));
+
+  cartRewards[rid]=(cartRewards[rid]||0)+1;
+
+  updateUserUI();
+  renderCart();
 };
 
-// ===========================
-//  FINALIZAR PEDIDO: WHATSAPP + FIRESTORE
-// ===========================
+/* Construir enlace de WhatsApp + guardar pedido en Firestore */
 function buildLink(total){
   $('#checkout').onclick = async e => {
     if (!user) {
@@ -1115,18 +1106,18 @@ function buildLink(total){
 
     const comment = ($('#orderComment').value || '').trim();
 
-    // Puntos ganados: se mandan a pending
+    // Puntos ganados (se suman directo, sin pending ahora)
     const earn=Math.floor(total*RATE);
-    const pendingAt = new Date();
-    try{
-      await db.collection('users').doc(user.uid).update({
-        pending: firebase.firestore.FieldValue.increment(earn),
-        pendingAt: firebase.firestore.Timestamp.fromDate(pendingAt)
-      });
-      user.pending = (user.pending||0) + earn;
-      user.pendingAt = pendingAt;
-    }catch(err){
-      console.error('Error actualizando puntos:', err);
+    if(user && user.uid && earn>0){
+      const newPoints = (user.points||0) + earn;
+      user.points = newPoints;
+      try{
+        await db.collection('users').doc(user.uid).update({
+          points: newPoints
+        });
+      }catch(err){
+        console.error('Error sumando puntos:',err);
+      }
     }
 
     // ============================
@@ -1169,9 +1160,9 @@ function buildLink(total){
       user:{
         uid:user.uid,
         email:user.email,
-        nombre:user.nombre,
-        apellido:user.apellido,
-        phone:user.phone,
+        nombre:user.nombre || '',
+        apellido:user.apellido || '',
+        phone:user.phone || '',
         address:user.address || null
       },
       status:'pendiente',
@@ -1182,7 +1173,7 @@ function buildLink(total){
       await db.collection('orders').add(orderData);
     }catch(err){
       console.error('Error guardando pedido:',err);
-      // No bloqueamos el envío de WhatsApp si falla Firestore
+      // igual dejamos continuar a WhatsApp
     }
 
     // ============================
@@ -1220,6 +1211,9 @@ function buildLink(total){
       msg += `%0AEntrega: ${orderDelivery?.address || ''}`;
     } else {
       msg += `%0AModalidad: Retiro en local`;
+      if(user.address){
+        msg += `%0ADirección registrada cliente: ${user.address}`;
+      }
     }
 
     // Tiempo mínimo de espera
@@ -1275,7 +1269,7 @@ function loadOrders(){
         div.className='admin-order';
         div.innerHTML=`
           <div class="admin-order-header">
-            <span>${data.user?.nombre || data.user?.email || 'Cliente'}</span>
+            <span>${data.user?.nombre || 'Cliente'}</span>
             <span>${fecha}</span>
           </div>
           <div class="admin-order-body">
@@ -1285,8 +1279,8 @@ function loadOrders(){
             <p><strong>Estado:</strong> ${data.status || 'pendiente'}</p>
             <p><strong>Items:</strong></p>
             <ul style="margin-left:1rem;">
-              ${ (data.items||[]).map(it=>`<li>${it.qty} x ${it.name}</li>`).join('') }
-              ${ (data.rewards||[]).map(it=>`<li>${it.qty} x ${it.name} (canje)</li>`).join('') }
+              ${(data.items||[]).map(it=>`<li>${it.qty} x ${it.name}</li>`).join('')}
+              ${(data.rewards||[]).map(it=>`<li>${it.qty} x ${it.name} (canje)</li>`).join('')}
             </ul>
           </div>
         `;
@@ -1306,5 +1300,6 @@ updateUserUI();
 </script>
 </body>
 </html>
+
 
 
