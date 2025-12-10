@@ -470,14 +470,13 @@ const RATE=.001; // regla puntos: 1 punto por cada $1000 aprox
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
 const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 
-// Recompensas canjeables con puntos (usa IDs de MENU)
 const REWARDS=[
   {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
   {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
   {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
 ];
 
-const ADMIN_PASS = "mamma2025"; // clave admin para panel
+const ADMIN_PASS = "mamma2025";
 
 /* Normalizar teléfono (deja solo dígitos) */
 function normalizePhone(phone){
@@ -485,13 +484,13 @@ function normalizePhone(phone){
 }
 
 /* Estado */
-let user=null,        // perfil completo {uid, email, nombre, points, ...}
+let user=null,
     cart={},
-    cartRewards={},   // productos canjeados con puntos (gratis)
+    cartRewards={},
     delType='pickup',
     code=null,
-    whenType='now',   // 'now' o 'later'
-    orderDelivery=null, // {address,km,fee,lat,lng}
+    whenType='now',
+    orderDelivery=null,
     regLocation={ address:null, lat:null, lng:null, km:null, fee:null };
 
 /* Render menú */
@@ -535,18 +534,28 @@ function closeAuthModal(){
   $('#authSubmit').textContent='Entrar';
   $('#extra').style.display='none';
   $('#pass2').style.display='none';
+  $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
 }
 
 let loginMode=true;
 $('#toggleAuth').onclick=()=>{
   loginMode=!loginMode;
-  $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
-  $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
-  $('#extra').style.display=loginMode?'none':'block';
-  $('#pass2').style.display=loginMode?'none':'block';
+  if(loginMode){
+    $('#authTitle').textContent='Inicia Sesión';
+    $('#authSubmit').textContent='Entrar';
+    $('#extra').style.display='none';
+    $('#pass2').style.display='none';
+    $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
+  }else{
+    $('#authTitle').textContent='Crea tu Cuenta';
+    $('#authSubmit').textContent='Registrar';
+    $('#extra').style.display='block';
+    $('#pass2').style.display='block';
+    $('#toggleAuth').textContent='¿Ya tienes cuenta? Inicia sesión';
+  }
 };
 
-/* Geocode registro (dirección principal) */
+/* Geocode registro */
 function toRad(d){return d*Math.PI/180;}
 const dist=(a,b,c,d)=>{
   const R=6371;
@@ -573,7 +582,6 @@ $('#geoBtn').onclick=async()=>{
   if(window._mk)_map.removeLayer(_mk);
   _mk=L.marker([lat,lon]).addTo(_map);
 
-  // Guardamos ubicación para registro
   regLocation = { address:addr, lat:+lat, lng:+lon, km, fee };
 };
 
@@ -599,37 +607,49 @@ function updateUserUI(){
   }
 }
 
-/* OBSERVADOR AUTH: cuando cambia el usuario en Firebase */
+/* OBSERVADOR AUTH */
 auth.onAuthStateChanged(async fbUser=>{
   if(!fbUser){
     user=null;
     updateUserUI();
     return;
   }
-  // cargar/crear perfil en Firestore
   const uid = fbUser.uid;
   const docRef = db.collection('users').doc(uid);
-  const snap = await docRef.get();
-  if(snap.exists){
-    user = { uid, ...snap.data() };
-  }else{
-    // si no hay perfil, creamos uno mínimo
-    const profile = {
+
+  try{
+    const snap = await docRef.get();
+    if(snap.exists){
+      user = { uid, ...snap.data() };
+    }else{
+      const profile = {
+        email: fbUser.email,
+        nombre: fbUser.email.split('@')[0],
+        apellido: '',
+        phone: '',
+        address: '',
+        lat:null,lng:null,km:null,fee:null,
+        points:0
+      };
+      await docRef.set(profile);
+      user = { uid, ...profile };
+    }
+  }catch(err){
+    console.error('Error cargando perfil usuario:',err);
+    user = {
+      uid,
       email: fbUser.email,
       nombre: fbUser.email.split('@')[0],
-      apellido: '',
-      phone: '',
-      address: '',
-      lat:null,lng:null,km:null,fee:null,
+      apellido:'',
+      phone:'',
+      address:'',
       points:0
     };
-    await docRef.set(profile);
-    user = { uid, ...profile };
   }
   updateUserUI();
 });
 
-/* Login / Registro con Firebase Auth (con mensajes claros) */
+/* Login / Registro */
 $('#authForm').onsubmit = async e => {
   e.preventDefault();
   const email = $('#email').value.trim().toLowerCase();
@@ -691,13 +711,20 @@ $('#authForm').onsubmit = async e => {
     let msg = 'Error de autenticación.';
 
     if(err.code === 'auth/user-not-found'){
-      msg = 'No existe una cuenta con ese correo.';
+      msg = 'No existe una cuenta con ese correo. Crea tu cuenta primero.';
     }else if(err.code === 'auth/wrong-password'){
-      msg = 'Contraseña incorrecta.';
+      msg = 'Contraseña incorrecta. Intenta de nuevo.';
     }else if(err.code === 'auth/invalid-email'){
       msg = 'Correo inválido.';
     }else if(err.code === 'auth/email-already-in-use'){
-      msg = 'Ese correo ya está registrado. Intenta iniciar sesión.';
+      msg = 'Ese correo ya está registrado. Te dejo en modo "Inicia sesión".';
+      // ⚠️ Cambio automático a modo login
+      loginMode = true;
+      $('#authTitle').textContent='Inicia Sesión';
+      $('#authSubmit').textContent='Entrar';
+      $('#extra').style.display='none';
+      $('#pass2').style.display='none';
+      $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
     }else if(err.message){
       msg = err.message;
     }
@@ -735,13 +762,12 @@ $('#cartItems').onclick=e=>{
 };
 
 function renderCart(){
-  const w=$('#cartItems');       // contenido modal
-  const s=$('#sideCartItems');   // carrito lateral
+  const w=$('#cartItems');
+  const s=$('#sideCartItems');
   w.innerHTML='';
   s.innerHTML='';
 
   let sub=0;
-  // Productos pagados
   for(const id in cart){
     const it=MENU.find(m=>m.id==id),
           q = cart[id];
@@ -766,7 +792,6 @@ function renderCart(){
     sub+=it.price*q;
   }
 
-  // Productos de recompensa (precio 0)
   for(const rid in cartRewards){
     const it=MENU.find(m=>m.id==rid),
           q=cartRewards[rid];
@@ -820,7 +845,7 @@ $('#couponBtn').onclick=e=>{
   calc();
 };
 
-/* Geocode DELIVERY (dirección específica del pedido) */
+/* Geocode DELIVERY */
 $('#delGeoBtn').onclick=async()=>{
   const addr=$('#delAddr').value.trim();
   if(!addr)return alert('Ingresa dirección de entrega');
@@ -834,7 +859,7 @@ $('#delGeoBtn').onclick=async()=>{
   calc();
 };
 
-/* CUÁNDO QUIERES EL PEDIDO (now / later) */
+/* Programar pedido */
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   if(whenType==='later'){
@@ -846,15 +871,12 @@ document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   }
 });
 
-/* Definir ventanas de horario por día */
 function getOpenWindowsForDay(dayIdx){
-  // 0=domingo, 3=mié,4=jue,5=vie,6=sáb
-  if(dayIdx===0) return [{start:12,end:16}];  // 12:00-16:00
-  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}]; // 18:00-23:00
+  if(dayIdx===0) return [{start:12,end:16}];
+  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}];
   return [];
 }
 
-/* Construye lista de fechas y horarios (cada 15 min) */
 function buildScheduleOptions(){
   const dateSel = $('#schedDate');
   const timeSel = $('#schedTime');
@@ -892,7 +914,6 @@ function buildScheduleOptions(){
   rebuildTimeOptions();
 }
 
-/* Recalcular horarios disponibles de acuerdo a la fecha seleccionada */
 function rebuildTimeOptions(){
   const dateSel = $('#schedDate');
   const timeSel = $('#schedTime');
@@ -947,26 +968,20 @@ function rebuildTimeOptions(){
   $('#scheduleHint').textContent='Solo se muestran horarios dentro del horario de atención. Mínimo 25 min de anticipación.';
 }
 
-/* Función para saber si un Date está dentro del horario (mié-sáb 18-23, dom 12-16) */
 function isInSchedule(dateObj){
-  const day=dateObj.getDay(); // 0=domingo
+  const day=dateObj.getDay();
   const hour=dateObj.getHours();
   const min=dateObj.getMinutes();
 
-  // domingo 12-16
   if(day===0){
     return hour>=12 && (hour<16 || (hour===16 && min===0));
   }
-
-  // miércoles=3, jueves=4, viernes=5, sábado=6 → 18-23
   if(day>=3 && day<=6){
     return hour>=18 && (hour<23 || (hour===23 && min===0));
   }
-
   return false;
 }
 
-/* Función para saber si está abierto AHORA */
 function isOpenNow(){
   const now=new Date();
   return isInSchedule(now);
@@ -994,7 +1009,6 @@ function calc(){
   buildLink(tot);
 } 
 
-/* Render lista de recompensas */
 function renderRewards(){
   const box = $('#rewardsList');
   box.innerHTML='';
@@ -1023,7 +1037,6 @@ $('#rewardsList').onclick=e=>{
   if(!reward) return;
   if((user.points||0) < reward.pts) return;
 
-  // Descontar puntos en Firestore y agregar producto gratis
   const newPoints = (user.points||0) - reward.pts;
   user.points = newPoints;
 
@@ -1037,7 +1050,7 @@ $('#rewardsList').onclick=e=>{
   renderCart();
 };
 
-/* Construir enlace de WhatsApp + guardar pedido en Firestore */
+/* Construir enlace de WhatsApp + guardar pedido */
 function buildLink(total){
   $('#checkout').onclick = async e => {
     if (!user) {
@@ -1053,7 +1066,6 @@ function buildLink(total){
       return;
     }
 
-    // Validación delivery
     if (delType === 'delivery') {
       if (!orderDelivery || !orderDelivery.address) {
         e.preventDefault();
@@ -1065,7 +1077,6 @@ function buildLink(total){
     const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
     const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
 
-    // Validación tiempo mínimo 25 min
     const now = new Date();
     const minWaitMs = 25 * 60 * 1000;
     const minDate = new Date(now.getTime() + minWaitMs);
@@ -1106,7 +1117,6 @@ function buildLink(total){
 
     const comment = ($('#orderComment').value || '').trim();
 
-    // Puntos ganados (se suman directo, sin pending ahora)
     const earn=Math.floor(total*RATE);
     if(user && user.uid && earn>0){
       const newPoints = (user.points||0) + earn;
@@ -1120,9 +1130,6 @@ function buildLink(total){
       }
     }
 
-    // ============================
-    //   GUARDAR PEDIDO EN FIRESTORE
-    // ============================
     const items = Object.entries(cart).map(([id,q])=>{
       const it = MENU.find(m=>m.id==id);
       return {
@@ -1173,30 +1180,22 @@ function buildLink(total){
       await db.collection('orders').add(orderData);
     }catch(err){
       console.error('Error guardando pedido:',err);
-      // igual dejamos continuar a WhatsApp
     }
 
-    // ============================
-    //   CONSTRUCCIÓN DEL MENSAJE
-    // ============================
     let msg = `Hola Mamma Maggi!%0APedido:%0A`;
 
-    // Productos normales
     for (const id in cart) {
       const it = MENU.find(m => m.id == id);
       msg += `${cart[id]} x ${it.name}%0A`;
     }
 
-    // Recompensas
     for (const rid in cartRewards) {
       const it = MENU.find(m => m.id == rid);
       msg += `${cartRewards[rid]} x ${it.name} (canje)%0A`;
     }
 
-    // Total
     msg += `%0ATotal: $${fmt(total)}`;
 
-    // Fecha / hora
     if (whenType === 'later' && scheduledDate) {
       const dVal = $('#schedDate').value;
       const tVal = $('#schedTime').value;
@@ -1205,7 +1204,6 @@ function buildLink(total){
       msg += `%0APara: Lo antes posible (hoy)`;
     }
 
-    // Tipo de entrega
     if (delType === 'delivery') {
       msg += `%0AModalidad: Delivery`;
       msg += `%0AEntrega: ${orderDelivery?.address || ''}`;
@@ -1216,13 +1214,10 @@ function buildLink(total){
       }
     }
 
-    // Tiempo mínimo de espera
     msg += `%0ATiempo de espera mínimo: 25 minutos`;
 
-    // Comentario opcional
     if (comment) msg += `%0AComentario: ${comment}`;
 
-    // Teléfono del cliente
     msg += `%0ATeléfono cliente: ${user.phone || ''}`;
 
     const waURL = `https://wa.me/${PHONE}?text=${msg}`;
@@ -1230,9 +1225,7 @@ function buildLink(total){
   };
 }
 
-// ===========================
-//   PANEL ADMIN (LECTURA)
-// ===========================
+/* PANEL ADMIN */
 $('#adminEnter').onclick = ()=>{
   const val = $('#adminPass').value;
   if(val === ADMIN_PASS){
@@ -1293,13 +1286,11 @@ function loadOrders(){
     });
 }
 
-// ===========================
-//   INICIO
-// ===========================
 updateUserUI();
 </script>
 </body>
 </html>
+
 
 
 
