@@ -7,17 +7,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-<!-- Firebase (solo app + firestore compat) -->
+<!-- Firebase (compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
-:root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a}
+:root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a;--muted:#b9b9b9;--ok:#2ecc71;--warn:#f1c40f}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
 a{color:var(--accent);text-decoration:none}
 button{font-family:inherit;border:none;cursor:pointer}
 h1,h2,h3{font-family:'Staatliches',cursive;font-weight:400}
+small{color:var(--muted)}
 
 /* HEADER */
 header{
@@ -35,18 +36,26 @@ header h1{font-size:2.3rem;letter-spacing:2px}
   background:none;color:var(--fg);display:flex;align-items:center;justify-content:center
 }
 #cartBtn span{font-size:.8rem}
-#userInfo{font-size:.8rem;opacity:.8;display:flex;align-items:center;gap:.4rem}
+#userInfo{font-size:.8rem;opacity:.9}
 
 /* BANNER HORARIO */
 #scheduleBanner{
   width:100%;
-  background:#e63946;
+  background:var(--accent);
   color:white;
   text-align:center;
   padding:8px 0;
   font-weight:700;
   font-size:.9rem;
 }
+#openBadge{
+  display:inline-flex;align-items:center;gap:.4rem;
+  margin-left:.6rem;padding:.15rem .5rem;border-radius:999px;
+  background:rgba(0,0,0,.25);font-weight:700
+}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.ok{background:var(--ok)}
+.dot.no{background:#ff6b6b}
 
 /* NAV */
 nav{
@@ -60,13 +69,27 @@ nav a{
 }
 nav a:hover{opacity:1;text-decoration:underline}
 
+/* CONTROLES MENÚ */
+.controls{
+  max-width:1200px;margin:0 auto 1rem;padding:0 1rem;
+  display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;align-items:center;
+}
+.controls input,.controls select{
+  padding:.65rem;border-radius:6px;border:1px solid #333;background:#222;color:var(--fg);
+  min-width:220px
+}
+.controls .pill{
+  padding:.55rem .8rem;border-radius:999px;border:1px solid #333;background:#1d1d1d;color:var(--fg);
+  display:flex;align-items:center;gap:.45rem;font-size:.9rem
+}
+
 /* LAYOUT PRINCIPAL: MENÚ + CARRITO LATERAL */
 .main-layout{
   max-width:1200px;
   margin:auto;
-  padding:1.5rem 1rem 2rem;
+  padding:1.2rem 1rem 2rem;
   display:grid;
-  grid-template-columns:minmax(0,2fr) 320px;
+  grid-template-columns:minmax(0,1fr) 340px;
   gap:1.5rem;
   align-items:flex-start;
 }
@@ -75,171 +98,136 @@ nav a:hover{opacity:1;text-decoration:underline}
   margin:0;
   padding:0;
 }
-section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
+section h2{text-align:center;font-size:2rem;margin-bottom:1rem}
 
-/* CARDS MENÚ (centrado visualmente) */
+/* ✅ MENU GRID 3 HORIZONTALES */
 .menu-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:1.5rem;
-  justify-items:center;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:1.2rem;
+  justify-items:stretch;
 }
 .card{
-  background:var(--card);border-radius:8px;
-  padding:1rem;display:flex;flex-direction:column;gap:.6rem;
-  width:100%;max-width:320px;
+  background:var(--card);border-radius:10px;
+  padding:1rem;display:flex;flex-direction:column;gap:.55rem;
+  width:100%;
+  box-shadow:0 6px 22px rgba(0,0,0,.25);
 }
-.price{font-weight:700}
+.card .topline{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem}
+.badge{
+  font-size:.72rem;font-weight:800;
+  padding:.2rem .55rem;border-radius:999px;
+  background:rgba(230,57,70,.22);color:#ffd6d9;border:1px solid rgba(230,57,70,.35);
+  white-space:nowrap;
+}
+.desc{font-size:.92rem;opacity:.92}
+.price{font-weight:800}
 .card button{
-  margin-top:auto;padding:.6rem;border-radius:4px;
-  background:var(--accent);color:#fff;font-weight:700
+  margin-top:auto;padding:.65rem;border-radius:6px;
+  background:var(--accent);color:#fff;font-weight:800
 }
+.card button:active{transform:scale(.99)}
+hr.sep{border:none;border-top:1px solid #2a2a2a;margin:.2rem 0}
 
 /* CARRITO LATERAL */
 #sideCart{
   background:var(--card);
-  border-radius:8px;
+  border-radius:10px;
   padding:1rem;
   position:sticky;
   top:1rem;
-  display:none; /* oculto hasta que haya productos */
+  display:none;
+  box-shadow:0 6px 22px rgba(0,0,0,.25);
 }
-#sideCart h3{
-  margin-bottom:.6rem;
-  font-size:1.2rem;
-}
+#sideCart h3{margin-bottom:.5rem;font-size:1.2rem}
 #sideCartItems{
   font-size:.9rem;
-  display:flex;
-  flex-direction:column;
-  gap:.35rem;
-  margin-bottom:.6rem;
+  display:flex;flex-direction:column;gap:.35rem;margin-bottom:.6rem
 }
-.side-line{
-  display:flex;
-  justify-content:space-between;
-  gap:.4rem;
-}
-.side-empty{
-  opacity:.7;
-  font-size:.85rem;
-}
-#sideTotal{
-  text-align:right;
-  font-weight:700;
-  font-size:.95rem;
-}
+.side-line{display:flex;justify-content:space-between;gap:.4rem}
+#sideTotal{text-align:right;font-weight:800;font-size:.95rem}
 
 /* MODAL GENÉRICO */
 .modal{
   position:fixed;inset:0;background:rgba(0,0,0,.7);
   display:flex;align-items:center;justify-content:center;
-  opacity:0;visibility:hidden;transition:opacity .3s
+  opacity:0;visibility:hidden;transition:opacity .25s
 }
 .modal.active{opacity:1;visibility:visible}
 .box{
-  background:var(--card);border-radius:8px;
-  padding:1.4rem;width:90%;max-width:520px;
+  background:var(--card);border-radius:10px;
+  padding:1.3rem;width:92%;max-width:540px;
   max-height:90vh;overflow-y:auto;
   display:flex;flex-direction:column;gap:1rem
 }
-.close{
-  align-self:flex-end;color:var(--fg);
-  font-size:1.3rem;cursor:pointer;background:none
-}
-form{display:grid;gap:1rem}
+.close{align-self:flex-end;color:var(--fg);font-size:1.3rem;cursor:pointer;background:none}
+form{display:grid;gap:.9rem}
 input,select,textarea{
-  padding:.7rem;border-radius:4px;
+  padding:.7rem;border-radius:6px;
   border:1px solid #333;background:#222;color:var(--fg)
 }
-textarea{min-height:70px;resize:vertical}
+textarea{min-height:80px;resize:vertical}
 .btn{
-  padding:.8rem;border-radius:4px;
-  background:var(--accent);color:#fff;font-weight:700
+  padding:.85rem;border-radius:6px;background:var(--accent);color:#fff;font-weight:800
 }
-
-/* CARRITO EN MODAL */
-.cart-item{
-  display:flex;justify-content:space-between;
-  align-items:center;gap:.4rem
-}
-.qty{
-  display:flex;align-items:center;gap:.4rem
-}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.cart-item{display:flex;justify-content:space-between;align-items:center;gap:.4rem}
+.qty{display:flex;align-items:center;gap:.4rem}
 .qty button{
-  width:24px;height:24px;border:1px solid var(--fg);
+  width:28px;height:28px;border:1px solid var(--fg);
   background:none;color:var(--fg);
-  border-radius:4px;font-weight:700
+  border-radius:6px;font-weight:900
 }
-.summary{text-align:right;font-size:1.05rem;font-weight:700}
-#map{height:220px;border-radius:6px;margin-top:.5rem;display:none}
+.summary{text-align:right;font-size:1.05rem;font-weight:900}
+#map{height:220px;border-radius:8px;margin-top:.5rem;display:none}
 
 /* SECCIONES EXTRA */
-.static-section{
-  max-width:960px;
-  margin:0 auto 2rem;
-  padding:0 1rem 2rem;
-}
-.static-section h2{
-  text-align:center;
-  font-size:1.9rem;
-  margin-bottom:1rem;
-}
-.static-section p{
-  margin-bottom:.6rem;
-  font-size:.95rem;
-  opacity:.9;
-}
+.static-section{max-width:960px;margin:0 auto 2rem;padding:0 1rem 2rem}
+.static-section h2{text-align:center;font-size:1.9rem;margin-bottom:1rem}
+.static-section p{margin-bottom:.6rem;font-size:.95rem;opacity:.92}
 
 /* RECOMPENSAS PUNTOS */
 .reward-item{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:.5rem;
-  font-size:.9rem;
-  margin-top:.3rem;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:.6rem;font-size:.9rem;margin-top:.35rem
 }
-.reward-item button{
-  padding:.25rem .5rem;
-  font-size:.8rem;
-  border-radius:4px;
-}
+.reward-item button{padding:.3rem .55rem;font-size:.82rem;border-radius:6px}
 
 /* ADMIN PANEL */
-#adminContent{
-  margin-top:1rem;
-}
+#adminContent{margin-top:1rem}
 .admin-order{
-  border:1px solid #333;
-  border-radius:6px;
-  padding:.6rem .8rem;
-  margin-bottom:.6rem;
-  font-size:.85rem;
+  border:1px solid #333;border-radius:8px;padding:.7rem .9rem;margin-bottom:.7rem;
+  font-size:.86rem;background:#171717
 }
-.admin-order-header{
-  display:flex;
-  justify-content:space-between;
-  gap:.5rem;
-  margin-bottom:.3rem;
-  font-weight:700;
-}
-.admin-order-body{
-  opacity:.9;
-}
+.admin-order-header{display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.35rem;font-weight:900}
+.admin-order-body{opacity:.92}
+.admin-order-body ul{margin: .35rem 0 0 1.2rem}
 
-/* RESPONSIVE */
+/* TOAST */
+#toast{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  background:#1d1d1d;border:1px solid #333;border-radius:999px;
+  padding:.65rem 1rem;color:var(--fg);font-weight:800;font-size:.92rem;
+  opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+  box-shadow:0 10px 30px rgba(0,0,0,.35)
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+/* MOBILE TWEAKS */
+@media(max-width:1100px){
+  .menu-grid{grid-template-columns:repeat(2, minmax(0, 1fr))}
+  .main-layout{grid-template-columns:minmax(0,1fr) 320px}
+}
 @media(max-width:800px){
-  .main-layout{
-    grid-template-columns:1fr;
-  }
-  #sideCart{
-    position:static;
-    margin-top:1rem;
-  }
+  .main-layout{grid-template-columns:1fr}
+  #sideCart{position:static;margin-top:1rem}
+  .menu-grid{grid-template-columns:1fr}
+  #cartBtn{right:.8rem}
+  #loginBtn{left:.8rem}
 }
 </style>
 </head>
+
 <body>
 <header>
   <button id="loginBtn" title="Ingresar / Registrarse">👤 Ingresar / Registrar</button>
@@ -250,6 +238,7 @@ textarea{min-height:70px;resize:vertical}
 
 <div id="scheduleBanner">
   🕒 Horario: Mié–Sáb 18:00–23:00 • Dom 12:00–16:00
+  <span id="openBadge"><span class="dot ok" id="openDot"></span><span id="openText">Abierto</span></span>
 </div>
 
 <nav>
@@ -260,6 +249,21 @@ textarea{min-height:70px;resize:vertical}
   <a href="#contacto">Contacto</a>
   <a href="#admin">Admin</a>
 </nav>
+
+<div class="controls">
+  <span class="pill">🔎 <input id="search" placeholder="Buscar (ej: pepperoni, pesto…)" style="border:none;background:transparent;outline:none;color:var(--fg);min-width:180px" /></span>
+  <select id="cat">
+    <option value="all">Todas las categorías</option>
+    <option value="pizza">Pizzas</option>
+    <option value="extra">Extras / Postres</option>
+  </select>
+  <select id="sort">
+    <option value="default">Orden original</option>
+    <option value="priceAsc">Precio: menor a mayor</option>
+    <option value="priceDesc">Precio: mayor a menor</option>
+    <option value="nameAsc">Nombre: A → Z</option>
+  </select>
+</div>
 
 <a id="top"></a>
 <div class="main-layout">
@@ -275,6 +279,9 @@ textarea{min-height:70px;resize:vertical}
     <button class="btn" id="openCartFromSide" style="width:100%;margin-top:.5rem">
       Ver detalle y finalizar
     </button>
+    <small style="display:block;margin-top:.55rem;opacity:.9;">
+      ⏱️ Tiempo mínimo: <strong>25 min</strong> • Programación: <strong>cada 15 min</strong>
+    </small>
   </aside>
 </div>
 
@@ -282,7 +289,7 @@ textarea{min-height:70px;resize:vertical}
 <section id="nosotros" class="static-section">
   <h2>Nosotros</h2>
   <p>Mamma Maggi nace en Temuco con la idea de hacer pizzas con cariño de casa, masa fermentada en frío y productos de calidad.</p>
-  <p>Trabajamos con masas fermentadas 24-48 horas, buena mozzarella y recetas pensadas para que cada pizza realmente valga la pena y sea una experiencia unica.</p>
+  <p>Trabajamos con masas reposadas, buena mozzarella y recetas pensadas para que cada pizza realmente valga la pena.</p>
 </section>
 
 <!-- SECCIÓN CLUB MAGGI -->
@@ -311,14 +318,17 @@ textarea{min-height:70px;resize:vertical}
 <!-- PANEL ADMIN -->
 <section id="admin" class="static-section">
   <h2>Panel Admin</h2>
-  <p style="font-size:.9rem;opacity:.8;">Ingresa la clave de administrador para ver el flujo de pedidos.</p>
+  <p style="font-size:.9rem;opacity:.85;">Ingresa la clave de administrador para ver el flujo de pedidos guardados en Firestore.</p>
   <div id="adminLogin">
     <input type="password" id="adminPass" placeholder="Clave admin" />
     <button class="btn" id="adminEnter" style="margin-top:.4rem;">Entrar</button>
   </div>
   <div id="adminContent" style="display:none">
-    <button class="btn" id="refreshOrders" style="margin-bottom:.7rem;">Actualizar pedidos</button>
-    <div id="ordersList"></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+      <button class="btn" id="refreshOrders">Actualizar pedidos</button>
+      <small>Tip: esto solo lee los últimos 60 pedidos.</small>
+    </div>
+    <div id="ordersList" style="margin-top:.8rem;"></div>
   </div>
 </section>
 
@@ -329,29 +339,31 @@ textarea{min-height:70px;resize:vertical}
   <form id="authForm">
     <input type="email" id="email" placeholder="Correo" required />
     <input type="password" id="pass" placeholder="Contraseña" required />
-    <!-- Confirmar contraseña SOLO para registro -->
     <input type="password" id="pass2" placeholder="Confirmar contraseña" style="display:none" />
 
     <div id="extra" style="display:none">
       <input id="name" placeholder="Nombre" required />
       <input id="last" placeholder="Apellido" required />
-      <input 
-        id="phone" 
-        placeholder="Teléfono (+569...)" 
+      <input
+        id="phone"
+        placeholder="Teléfono (+569... o 9xxxxxxxx)"
         required
-        pattern="^\+?56?\s?9?\d{8}$"
-        title="Ingresa un número chileno válido, ejemplo: +56964400283"
+        inputmode="tel"
+        pattern="^[+0-9 ()-]{8,20}$"
+        title="Ej: +56964400283 o 964400283"
       />
-      <input id="addr" placeholder="Dirección (Temuco)" required />
-      <button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
+      <input id="addr" placeholder="Dirección (Temuco) (solo referencia)" required />
+      <button type="button" class="btn" id="geoBtn">Confirmar dirección (referencia)</button>
       <p id="distText" style="text-align:center"></p>
       <div id="map"></div>
+      <small>Esta dirección es solo de referencia. El cobro de delivery se calcula en el carrito.</small>
     </div>
 
-    <button type="submit" class="btn" id="authSubmit">Entrar</button>
-    <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">
+    <button class="btn" id="authSubmit" type="submit">Entrar</button>
+    <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.2rem">
       ¿No tienes cuenta? Regístrate
     </p>
+    <small id="authMsg" style="text-align:center;display:block;min-height:1.1rem;"></small>
   </form>
 </div></div>
 
@@ -366,58 +378,60 @@ textarea{min-height:70px;resize:vertical}
     <label style="margin-left:.7rem;"><input type="radio" name="delType" value="delivery"/> Delivery</label>
   </div>
 
-  <!-- Detalle de delivery (dirección a cobrar por distancia) -->
   <div id="deliveryDetails" style="display:none;margin-top:.4rem">
     <input id="delAddr" placeholder="Dirección de entrega (Temuco)" />
     <button type="button" class="btn" id="delGeoBtn" style="margin-top:.4rem">Confirmar dirección delivery</button>
     <p id="delDistText" style="font-size:.85rem;text-align:center;margin-top:.25rem"></p>
+    <small>El cobro es por distancia: <strong>$1000 por km</strong> (redondeado hacia arriba).</small>
   </div>
 
-  <!-- CUÁNDO QUIERES EL PEDIDO -->
   <div style="margin-top:.7rem">
     <label><strong>¿Para cuándo?</strong></label><br/>
     <label><input type="radio" name="whenType" value="now" checked> Lo antes posible (hoy)</label>
     <label style="margin-left:.7rem;"><input type="radio" name="whenType" value="later"> Programar</label>
-    <div id="scheduleFields" style="display:none;margin-top:.4rem;gap:.4rem;flex-wrap:wrap;">
-      <select id="schedDate"></select>
-      <select id="schedTime"></select>
+
+    <div id="scheduleFields" style="display:none;margin-top:.4rem;gap:.5rem;flex-wrap:wrap;display:flex;">
+      <select id="schedDate" style="flex:1;min-width:180px"></select>
+      <select id="schedTime" style="flex:1;min-width:180px"></select>
     </div>
-    <small id="scheduleHint" style="font-size:.8rem;opacity:.8;"></small>
+    <small id="scheduleHint" style="font-size:.8rem;opacity:.85;"></small>
   </div>
 
   <div style="margin-top:.7rem">
-    <label>Código</label>
+    <label>Código de descuento</label>
     <div style="display:flex;gap:.4rem;margin-top:.3rem">
-      <input id="coupon" style="flex:1"/>
-      <button class="btn" id="couponBtn" style="padding:.5rem .8rem">Aplicar</button>
+      <input id="coupon" style="flex:1" placeholder="Ej: MAGGI10" />
+      <button class="btn" id="couponBtn" style="padding:.55rem .85rem" type="button">Aplicar</button>
     </div>
     <small id="couponMsg"></small>
   </div>
 
-  <!-- CLUB MAGGI / PUNTOS -->
   <div id="ptsBox" style="display:none;margin-top:.7rem">
     <p>Tienes <span id="pts">0</span> puntos Club Maggi.</p>
     <div id="rewardsList"></div>
   </div>
 
-  <!-- Comentario antes de finalizar -->
   <div style="margin-top:.7rem">
-    <label for="orderComment">Comentario para tu pedido (opcional)</label>
-    <textarea id="orderComment" placeholder="Ej: sin cebolla, tocar timbre, dejar en conserjería, etc."></textarea>
+    <label for="orderComment">Comentario (opcional)</label>
+    <textarea id="orderComment" placeholder="Ej: sin cebolla, tocar timbre, etc."></textarea>
   </div>
 
   <p class="summary">Subtotal: $<span id="sub">0</span></p>
   <p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
   <p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
   <p class="summary">Total: $<span id="tot">0</span></p>
-  <a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
+
+  <a class="btn" id="checkout" href="#" style="text-align:center;">Finalizar por WhatsApp</a>
+  <small style="text-align:center;display:block;opacity:.85;">Al finalizar se guardará el pedido y se abrirá WhatsApp con el mensaje listo.</small>
 </div></div>
+
+<div id="toast">Agregado al carrito ✅</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ===========================
-//  FIREBASE INIT (FIRESTORE)
-// ===========================
+/* ===========================
+   FIREBASE INIT (FIRESTORE)
+=========================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
   authDomain: "mamma-maggi.firebaseapp.com",
@@ -428,313 +442,173 @@ const firebaseConfig = {
   measurementId: "G-L8ZT1KN1YC"
 };
 firebase.initializeApp(firebaseConfig);
-const db   = firebase.firestore();
+const db = firebase.firestore();
 
-// ===========================
-//  DATOS Y CONSTANTES
-// ===========================
+/* ===========================
+   DATOS
+=========================== */
 const MENU=[
-  {id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
-  {id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
-  {id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990},
-  {id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500},
-  {id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500},
-  {id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, chapiñones, cebolla morada y pimentón.',price:11990},
-  {id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990},
-  {id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500},
-  {id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500},
-  {id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990},
-  {id:11,name:'Bernarda',desc:'Salsa de tomate, mozzarella, queso azul, nueces, miel, ricotta y albahaca.',price:10990},
-  {id:12,name:'Bacon No Bacon',desc:'Salsa de tomate, mozzarella, proteina de soja sabor tocino y cebolla.',price:10990},
-  {id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},
-  {id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},
-  {id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},
-  {id:16,name:'Tiramisú',desc:'Postre clásico italiano.',price:4990},
-  {id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
-  {id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}
+  {id:1,name:'Margarita',desc:'Salsa de tomate, mozzarella, albahaca y parmesano.',price:9990,cat:'pizza',badge:'Clásica'},
+  {id:2,name:'Pepperoni',desc:'Salsa tomate, mozzarella, pepperoni.',price:10500,cat:'pizza',badge:'Top'},
+  {id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990,cat:'pizza'},
+  {id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500,cat:'pizza'},
+  {id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500,cat:'pizza'},
+  {id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, champiñones, cebolla morada y pimentón.',price:11990,cat:'pizza'},
+  {id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990,cat:'pizza',badge:'Nueva'},
+  {id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500,cat:'pizza'},
+  {id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500,cat:'pizza'},
+  {id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990,cat:'pizza',badge:'Premium'},
+  {id:11,name:'Bernarda',desc:'Queso azul, nueces, miel, ricotta y albahaca.',price:10990,cat:'pizza'},
+  {id:12,name:'Bacon No Bacon',desc:'Proteína de soja sabor tocino y cebolla.',price:10990,cat:'pizza'},
+  {id:13,name:'Mare Verde',desc:'Salmón ahumado, rúcula y parmesano.',price:10990,cat:'pizza'},
+  {id:14,name:'Gamberetti',desc:'Camarones al ajo, perejil y limón.',price:10990,cat:'pizza'},
+  {id:15,name:'Sweet Cherry',desc:'Tomates cherry confitados, aceitunas y albahaca.',price:10990,cat:'pizza'},
+  {id:16,name:'Tiramisú',desc:'Postre clásico italiano.',price:4990,cat:'extra',badge:'Postre'},
+  {id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500,cat:'extra'},
+  {id:18,name:'Palitos de queso',desc:'Palitos con mozzarella y orégano.',price:4990,cat:'extra'}
 ];
 
 const ORIGIN=[-38.731229, -72.626507];
+const PHONE='56949486579';
+const RATE=.001;                 // puntos: ~1 por $1000
+const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
+const $=q=>document.querySelector(q);
+const fmt=n=>Number(n||0).toLocaleString('es-CL');
 
-// 🎟️ Varios códigos de descuento
+/* Descuentos (ejemplos) */
 const CODE={
-  MAGGI10:0.10,
-  BIENVENIDO15:0.15,
-  AMIGOS20:0.20
+  MAGGI10:0.10,       // 10%
+  PIZZA5:0.05,        // 5%
+  PRIMERA8:0.08,      // 8%
+  CLUB12:0.12         // 12%
 };
 
-const PHONE='56949486579';
-const RATE=.001; // puntos por peso
-const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
-const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
-
+/* Recompensas con puntos */
 const REWARDS=[
   {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
   {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
-  {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'},
+  {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'}
 ];
 
+/* Admin */
 const ADMIN_PASS = "mamma2025";
 
-function normalizePhone(phone){
-  return phone.replace(/\D/g,'');
+/* ===========================
+   ESTADO
+=========================== */
+let user=null;
+let cart={};
+let cartRewards={};
+let delType='pickup';
+let code=null;
+let whenType='now';
+let orderDelivery=null; // {address,km,fee,lat,lng}
+
+/* ===========================
+   UTIL
+=========================== */
+function toast(msg){
+  const t=$('#toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(window.__t);
+  window.__t=setTimeout(()=>t.classList.remove('show'),1200);
 }
+function normalizePhone(phone){ return String(phone||'').replace(/\D/g,''); }
 
-/* Estado */
-let user=null,
-    cart={},
-    cartRewards={},
-    delType='pickup',
-    code=null,
-    whenType='now',
-    orderDelivery=null,
-    regLocation={ address:null, lat:null, lng:null, km:null, fee:null };
-
-/* Render menú */
-MENU.forEach(i=>{
-  const c=document.createElement('div');
-  c.className='card';
-  c.innerHTML=`
-    <h3>${i.name}</h3>
-    <p>${i.desc}</p>
-    <span class='price'>$${fmt(i.price)}</span>
-    <button class='btn' data-id='${i.id}'>Agregar</button>`;
-  $('#menuGrid').appendChild(c);
-});
-
-/* Agregar al carrito */
-$('#menuGrid').onclick=e=>{
-  if(e.target.dataset.id){
-    const id=+e.target.dataset.id;
-    cart[id]=(cart[id]||0)+1;
-    updateCount();
-    renderCart();
-  }
-};
-
-function updateCount(){
-  $('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
-}
-
-/* Auth modal */
-const authM=$('#authModal');
-const authForm=$('#authForm');
-
-$('#loginBtn').onclick=()=>authM.classList.add('active');
-$('#closeAuth').onclick=()=>closeAuthModal();
-
-function closeAuthModal(){
-  authM.classList.remove('active');
-  authForm.reset();
-  loginMode=true;
-  $('#authTitle').textContent='Inicia Sesión';
-  $('#authSubmit').textContent='Entrar';
-  $('#extra').style.display='none';
-  $('#pass2').style.display='none';
-  $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
-}
-
-let loginMode=true;
-$('#toggleAuth').onclick=()=>{
-  loginMode=!loginMode;
-  if(loginMode){
-    $('#authTitle').textContent='Inicia Sesión';
-    $('#authSubmit').textContent='Entrar';
-    $('#extra').style.display='none';
-    $('#pass2').style.display='none';
-    $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
-  }else{
-    $('#authTitle').textContent='Crea tu Cuenta';
-    $('#authSubmit').textContent='Registrar';
-    $('#extra').style.display='block';
-    $('#pass2').style.display='block';
-    $('#toggleAuth').textContent='¿Ya tienes cuenta? Inicia sesión';
-  }
-};
-
-/* Geocode registro */
 function toRad(d){return d*Math.PI/180;}
-const dist=(a,b,c,d)=>{
+function dist(a,b,c,d){
   const R=6371;
   const dLat=toRad(c-a),dLon=toRad(d-b);
   const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
-};
-
-$('#geoBtn').onclick=async()=>{
-  const addr=$('#addr').value.trim();
-  if(!addr)return alert('Ingresa dirección');
-  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
-  if(!d[0])return alert('No encontrada');
-  const {lat,lon}=d[0];
-  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
-  const fee=FEE(km);
-  $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
-  $('#map').style.display='block';
-  if(!window._map){
-    _map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
-  }
-  _map.setView([lat,lon],13);
-  if(window._mk)_map.removeLayer(_mk);
-  _mk=L.marker([lat,lon]).addTo(_map);
-
-  regLocation = { address:addr, lat:+lat, lng:+lon, km, fee };
-};
-
-/* Actualizar UI usuario */
-function updateUserUI(){
-  const info = $('#userInfo');
-  if(user){
-    info.innerHTML = `
-      Hola, ${user.nombre || user.email} (${user.points || 0} pts)
-      <button id="logoutBtn" style="background:none;border:1px solid #fff;border-radius:4px;padding:2px 6px;font-size:.7rem;color:#fff;cursor:pointer;">Salir</button>
-    `;
-    $('#pts').textContent=user.points||0;
-    $('#ptsBox').style.display='block';
-    renderRewards();
-    $('#logoutBtn').onclick = ()=>{
-      user=null;
-      updateUserUI();
-      alert('Sesión cerrada');
-    };
-  }else{
-    info.innerHTML='';
-    $('#ptsBox').style.display='none';
-    $('#rewardsList').innerHTML='';
-  }
 }
 
-/* LOGIN / REGISTRO CON FIRESTORE (sin Auth) */
-$('#authForm').onsubmit = async e => {
-  e.preventDefault();
-  const email = $('#email').value.trim().toLowerCase();
-  const pass  = $('#pass').value;
-  const pass2 = $('#pass2').value;
-  const submitBtn = $('#authSubmit');
+/* Horario: Mié–Sáb 18-23, Dom 12-16 */
+function isInSchedule(dateObj){
+  const day=dateObj.getDay(); // 0=domingo
+  const hour=dateObj.getHours();
+  const min=dateObj.getMinutes();
+  if(day===0) return hour>=12 && (hour<16 || (hour===16 && min===0));
+  if(day>=3 && day<=6) return hour>=18 && (hour<23 || (hour===23 && min===0));
+  return false;
+}
+function isOpenNow(){ return isInSchedule(new Date()); }
+function updateOpenBadge(){
+  const open=isOpenNow();
+  $('#openDot').className='dot '+(open?'ok':'no');
+  $('#openText').textContent=open?'Abierto':'Cerrado';
+}
 
-  submitBtn.disabled = true;
-  submitBtn.textContent = loginMode ? 'Ingresando...' : 'Registrando...';
+/* ===========================
+   RENDER MENU (con filtros)
+=========================== */
+function getFilteredMenu(){
+  const q=($('#search').value||'').trim().toLowerCase();
+  const cat=$('#cat').value;
+  const sort=$('#sort').value;
 
-  try{
-    if(loginMode){
-      // LOGIN
-      const doc = await db.collection('users').doc(email).get();
-      if(!doc.exists){
-        alert('No existe una cuenta con ese correo. Regístrate primero.');
-      }else{
-        const data = doc.data();
-        if(data.pass !== pass){
-          alert('Contraseña incorrecta.');
-        }else{
-          user = { email, ...data };
-          updateUserUI();
-          alert('Sesión iniciada correctamente 👌');
-          closeAuthModal();
+  let arr=[...MENU];
 
-          if($('#cartModal').classList.contains('wait-login')){
-            $('#cartModal').classList.remove('wait-login');
-            calc();
-            $('#cartModal').classList.add('active');
-          }
-        }
-      }
+  if(cat!=='all') arr=arr.filter(x=>x.cat===cat);
+  if(q) arr=arr.filter(x=>(x.name+' '+x.desc).toLowerCase().includes(q));
 
-    }else{
-      // REGISTRO
-      if(pass!==pass2){
-        alert('Las contraseñas no coinciden');
-        return;
-      }
-      if(!regLocation.address){
-        alert('Confirma tu dirección principal antes de registrarte (botón "Confirmar dirección").');
-        return;
-      }
+  if(sort==='priceAsc') arr.sort((a,b)=>a.price-b.price);
+  if(sort==='priceDesc') arr.sort((a,b)=>b.price-a.price);
+  if(sort==='nameAsc') arr.sort((a,b)=>a.name.localeCompare(b.name,'es'));
 
-      const doc = await db.collection('users').doc(email).get();
-      if(doc.exists){
-        alert('Ese correo ya está registrado. Te paso a modo "Inicia sesión".');
-        loginMode = true;
-        $('#authTitle').textContent='Inicia Sesión';
-        $('#authSubmit').textContent='Entrar';
-        $('#extra').style.display='none';
-        $('#pass2').style.display='none';
-        $('#toggleAuth').textContent='¿No tienes cuenta? Regístrate';
-        return;
-      }
+  return arr;
+}
 
-      const profile = {
-        email,
-        pass,
-        nombre: $('#name').value.trim(),
-        apellido: $('#last').value.trim(),
-        phone: normalizePhone($('#phone').value),
-        address: regLocation.address,
-        lat: regLocation.lat,
-        lng: regLocation.lng,
-        km:  regLocation.km,
-        fee: regLocation.fee,
-        points:0
-      };
+function renderMenu(){
+  const grid=$('#menuGrid');
+  grid.innerHTML='';
+  const items=getFilteredMenu();
 
-      await db.collection('users').doc(email).set(profile);
-      user = { email, ...profile };
-      updateUserUI();
-      alert('Cuenta creada y sesión iniciada ✅');
-      closeAuthModal();
-
-      if($('#cartModal').classList.contains('wait-login')){
-        $('#cartModal').classList.remove('wait-login');
-        calc();
-        $('#cartModal').classList.add('active');
-      }
-    }
-
-  }catch(err){
-    console.error('Error auth/firestore:', err);
-    alert('Error de autenticación: ' + (err.message || 'revisa la consola'));
-  }finally{
-    submitBtn.disabled = false;
-    submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
+  if(!items.length){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:.85;padding:1rem;">
+      No encontramos productos con ese filtro.
+    </div>`;
+    return;
   }
-};
 
-/* Cart modal */
-$('#cartBtn').onclick=()=>{
-  renderCart();
-  $('#cartModal').classList.add('active');
-};
-$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
+  items.forEach(i=>{
+    const c=document.createElement('div');
+    c.className='card';
+    c.innerHTML=`
+      <div class="topline">
+        <h3>${i.name}</h3>
+        ${i.badge?`<span class="badge">${i.badge}</span>`:''}
+      </div>
+      <p class="desc">${i.desc||''}</p>
+      <hr class="sep"/>
+      <span class="price">$${fmt(i.price)}</span>
+      <button class="btn" data-id="${i.id}">Agregar</button>
+    `;
+    grid.appendChild(c);
+  });
+}
 
-/* botón lateral "ver detalle" */
-$('#openCartFromSide').onclick=()=>{
-  renderCart();
-  $('#cartModal').classList.add('active');
-};
+$('#search').addEventListener('input',renderMenu);
+$('#cat').addEventListener('change',renderMenu);
+$('#sort').addEventListener('change',renderMenu);
 
-/* Cambios en cantidades dentro del modal */
-$('#cartItems').onclick=e=>{
-  if(e.target.closest('.qty')){
-    const id=+e.target.closest('.qty').dataset.id;
-    if(e.target.classList.contains('inc'))cart[id]++;
-    if(e.target.classList.contains('dec'))cart[id]=Math.max(0,cart[id]-1);
-    if(!cart[id])delete cart[id];
-    updateCount();
-    renderCart();
-  }
-};
-
+/* ===========================
+   CARRITO
+=========================== */
+function updateCount(){
+  const cnt = Object.values(cart).reduce((a,b)=>a+b,0) + Object.values(cartRewards).reduce((a,b)=>a+b,0);
+  $('#cartCount').textContent=cnt;
+}
 function renderCart(){
   const w=$('#cartItems');
   const s=$('#sideCartItems');
-  w.innerHTML='';
-  s.innerHTML='';
+  w.innerHTML=''; s.innerHTML='';
 
   let sub=0;
-  for(const id in cart){
-    const it=MENU.find(m=>m.id==id),
-          q = cart[id];
 
+  for(const id in cart){
+    const it=MENU.find(m=>m.id==id), q=cart[id];
     w.innerHTML+=`
       <div class='cart-item'>
         <span>${it.name}</span>
@@ -745,28 +619,22 @@ function renderCart(){
         </div>
         <span>$${fmt(it.price*q)}</span>
       </div>`;
-
     s.innerHTML+=`
       <div class="side-line">
         <span>${q} x ${it.name}</span>
         <span>$${fmt(it.price*q)}</span>
       </div>`;
-
     sub+=it.price*q;
   }
 
   for(const rid in cartRewards){
-    const it=MENU.find(m=>m.id==rid),
-          q=cartRewards[rid];
-    if(!it) continue;
-
+    const it=MENU.find(m=>m.id==rid), q=cartRewards[rid];
     w.innerHTML+=`
       <div class='cart-item'>
-        <span>${it.name} (canje puntos)</span>
+        <span>${it.name} (canje)</span>
         <span>${q} x</span>
         <span>$0</span>
       </div>`;
-
     s.innerHTML+=`
       <div class="side-line">
         <span>${q} x ${it.name} (canje)</span>
@@ -775,7 +643,6 @@ function renderCart(){
   }
 
   if(!Object.keys(cart).length && !Object.keys(cartRewards).length){
-    s.innerHTML='';
     $('#sideCart').style.display='none';
   }else{
     $('#sideCart').style.display='block';
@@ -783,10 +650,41 @@ function renderCart(){
 
   $('#sub').textContent=fmt(sub);
   $('#sideTotal').textContent='Subtotal: $'+fmt(sub);
+
   calc();
 }
 
-/* Delivery / cupones */
+/* Add to cart click */
+$('#menuGrid').addEventListener('click', (e)=>{
+  const btn=e.target.closest('button[data-id]');
+  if(!btn) return;
+  const id=+btn.dataset.id;
+  cart[id]=(cart[id]||0)+1;
+  updateCount();
+  renderCart();
+  toast('Agregado al carrito ✅');
+});
+
+/* Cart modal open/close */
+$('#cartBtn').onclick=()=>{ renderCart(); $('#cartModal').classList.add('active'); };
+$('#openCartFromSide').onclick=()=>{ renderCart(); $('#cartModal').classList.add('active'); };
+$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
+
+/* qty changes */
+$('#cartItems').onclick=e=>{
+  const qwrap=e.target.closest('.qty');
+  if(!qwrap) return;
+  const id=+qwrap.dataset.id;
+  if(e.target.classList.contains('inc')) cart[id]++;
+  if(e.target.classList.contains('dec')) cart[id]=Math.max(0,cart[id]-1);
+  if(!cart[id]) delete cart[id];
+  updateCount();
+  renderCart();
+};
+
+/* ===========================
+   DELIVERY
+=========================== */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
   if(delType==='delivery'){
@@ -800,20 +698,11 @@ document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   calc();
 });
 
-$('#couponBtn').onclick=e=>{
-  e.preventDefault();
-  const c=$('#coupon').value.trim().toUpperCase();
-  code=CODE[c]?c:null;
-  $('#couponMsg').textContent=code?`Aplicado (${c}) ✓`:'Inválido';
-  calc();
-};
-
-/* Geocode DELIVERY */
 $('#delGeoBtn').onclick=async()=>{
   const addr=$('#delAddr').value.trim();
-  if(!addr)return alert('Ingresa dirección de entrega');
+  if(!addr) return alert('Ingresa dirección de entrega');
   const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
-  if(!d[0])return alert('No encontrada');
+  if(!d[0]) return alert('No encontrada');
   const {lat,lon}=d[0];
   const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
   const fee=FEE(km);
@@ -822,7 +711,19 @@ $('#delGeoBtn').onclick=async()=>{
   calc();
 };
 
-/* Programar pedido */
+/* ===========================
+   CUPÓN
+=========================== */
+$('#couponBtn').onclick=()=>{
+  const c=($('#coupon').value||'').trim().toUpperCase();
+  code = CODE[c] ? c : null;
+  $('#couponMsg').textContent = code ? `Aplicado ✓ (${Math.round(CODE[code]*100)}%)` : 'Inválido';
+  calc();
+};
+
+/* ===========================
+   PROGRAMAR (cada 15 min)
+=========================== */
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   if(whenType==='later'){
@@ -841,28 +742,24 @@ function getOpenWindowsForDay(dayIdx){
 }
 
 function buildScheduleOptions(){
-  const dateSel = $('#schedDate');
-  const timeSel = $('#schedTime');
-  dateSel.innerHTML='';
-  timeSel.innerHTML='';
+  const dateSel=$('#schedDate');
+  const timeSel=$('#schedTime');
+  dateSel.innerHTML=''; timeSel.innerHTML='';
 
-  const now = new Date();
-
+  const now=new Date();
   for(let i=0;i<7;i++){
-    const d = new Date();
+    const d=new Date();
     d.setDate(now.getDate()+i);
-    const windows = getOpenWindowsForDay(d.getDay());
-    if(!windows.length) continue;
+    const win=getOpenWindowsForDay(d.getDay());
+    if(!win.length) continue;
 
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    const value = `${yyyy}-${mm}-${dd}`;
-    const label = d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric', month:'short'});
-
+    const yyyy=d.getFullYear();
+    const mm=String(d.getMonth()+1).padStart(2,'0');
+    const dd=String(d.getDate()).padStart(2,'0');
+    const value=`${yyyy}-${mm}-${dd}`;
+    const label=d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric', month:'short'});
     const opt=document.createElement('option');
-    opt.value=value;
-    opt.textContent=label;
+    opt.value=value; opt.textContent=label;
     dateSel.appendChild(opt);
   }
 
@@ -873,126 +770,77 @@ function buildScheduleOptions(){
     return;
   }
 
-  dateSel.onchange = rebuildTimeOptions;
+  dateSel.onchange=rebuildTimeOptions;
   rebuildTimeOptions();
 }
 
 function rebuildTimeOptions(){
-  const dateSel = $('#schedDate');
-  const timeSel = $('#schedTime');
-  const val = dateSel.value;
+  const dateSel=$('#schedDate');
+  const timeSel=$('#schedTime');
   timeSel.innerHTML='';
-
+  const val=dateSel.value;
   if(!val){
-    const o=document.createElement('option');
-    o.value='';
-    o.textContent='Selecciona fecha';
-    timeSel.appendChild(o);
+    timeSel.innerHTML='<option value="">Selecciona fecha</option>';
     return;
   }
 
   const [y,m,d]=val.split('-').map(Number);
-  const dtBase = new Date(y,m-1,d);
-  const windows = getOpenWindowsForDay(dtBase.getDay());
+  const base=new Date(y,m-1,d);
+  const windows=getOpenWindowsForDay(base.getDay());
   if(!windows.length){
-    const o=document.createElement('option');
-    o.value='';
-    o.textContent='Sin horarios';
-    timeSel.appendChild(o);
+    timeSel.innerHTML='<option value="">Sin horarios</option>';
     return;
   }
 
-  const now = new Date();
-  const minWaitMs = 25*60*1000;
-  const minDate = new Date(now.getTime()+minWaitMs);
+  const now=new Date();
+  const minWaitMs=25*60*1000;
+  const minDate=new Date(now.getTime()+minWaitMs);
 
   windows.forEach(win=>{
     for(let h=win.start; h<win.end; h++){
       for(let min=0; min<60; min+=15){
-        const slot = new Date(y,m-1,d,h,min,0);
-        const value = `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
-        const o=document.createElement('option');
-        o.value=value;
+        const slot=new Date(y,m-1,d,h,min,0);
+        const v=`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+        const opt=document.createElement('option');
+        opt.value=v;
+        opt.textContent=v;
 
-        let label = `${value}`;
-        if(slot < minDate && slot.toDateString()===now.toDateString()){
-          o.disabled=true;
-          label += ' (no disponible)';
+        // deshabilitar si es hoy y menor que 25 min
+        if(slot.toDateString()===now.toDateString() && slot<minDate){
+          opt.disabled=true;
+          opt.textContent=v+' (no disponible)';
         }
-        o.textContent=label;
-        timeSel.appendChild(o);
+        timeSel.appendChild(opt);
       }
     }
   });
 
-  const firstEnabled = Array.from(timeSel.options).find(o=>!o.disabled && o.value);
-  if(firstEnabled) timeSel.value = firstEnabled.value;
+  const firstEnabled=[...timeSel.options].find(o=>!o.disabled && o.value);
+  if(firstEnabled) timeSel.value=firstEnabled.value;
 
-  $('#scheduleHint').textContent='Solo se muestran horarios dentro del horario de atención. Mínimo 25 min de anticipación.';
+  $('#scheduleHint').textContent='Programación disponible solo dentro del horario. Mínimo 25 min. Intervalos de 15 min.';
 }
 
-function isInSchedule(dateObj){
-  const day=dateObj.getDay();
-  const hour=dateObj.getHours();
-  const min=dateObj.getMinutes();
-
-  if(day===0){
-    return hour>=12 && (hour<16 || (hour===16 && min===0));
-  }
-  if(day>=3 && day<=6){
-    return hour>=18 && (hour<23 || (hour===23 && min===0));
-  }
-  return false;
-}
-
-function isOpenNow(){
-  const now=new Date();
-  return isInSchedule(now);
-}
-
-function calc(){
-  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
-  let del=0,km=0;
-
-  if(delType==='delivery' && orderDelivery){
-    del=orderDelivery.fee;
-    km=orderDelivery.km;
-  }
-
-  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
-  $('#del').textContent=fmt(del);
-  $('#km').textContent=km;
-
-  const disc=code?Math.round(sub*CODE[code]):0;
-  $('#discRow').style.display=disc?'block':'none';
-  $('#disc').textContent=fmt(disc);
-
-  const tot=sub+del-disc;
-  $('#tot').textContent=fmt(tot);
-  buildLink(tot);
-} 
-
+/* ===========================
+   REWARDS (PUNTOS)
+=========================== */
 function renderRewards(){
-  const box = $('#rewardsList');
+  const box=$('#rewardsList');
   box.innerHTML='';
   if(!user) return;
-
   REWARDS.forEach(r=>{
-    const it = MENU.find(m=>m.id===r.id);
+    const it=MENU.find(m=>m.id===r.id);
     if(!it) return;
-    const can = (user.points||0) >= r.pts;
-    box.innerHTML+=`
+    const can=(user.points||0) >= r.pts;
+    box.innerHTML += `
       <div class="reward-item">
         <span>${r.label}</span>
-        <button class="btn" data-rid="${r.id}" ${can?'':'disabled'}>
-          ${can?'Canjear':'No alcanza'}
-        </button>
+        <button class="btn" data-rid="${r.id}" ${can?'':'disabled'}>${can?'Canjear':'No alcanza'}</button>
       </div>`;
   });
 }
 
-/* Click en recompensas */
-$('#rewardsList').onclick=e=>{
+$('#rewardsList').onclick=async(e)=>{
   const btn=e.target.closest('button[data-rid]');
   if(!btn || !user) return;
   const rid=+btn.dataset.rid;
@@ -1000,140 +848,258 @@ $('#rewardsList').onclick=e=>{
   if(!reward) return;
   if((user.points||0) < reward.pts) return;
 
-  const newPoints = (user.points||0) - reward.pts;
-  user.points = newPoints;
+  user.points=(user.points||0)-reward.pts;
 
-  db.collection('users').doc(user.email).update({
-    points:newPoints
-  }).catch(err=>console.error('Error actualizando puntos:',err));
+  // Guardar puntos en Firestore users
+  try{
+    await db.collection('users').doc(user.email).set(user,{merge:true});
+  }catch(err){
+    console.warn('No se pudo guardar puntos en Firestore (revisa hosting http/https):',err);
+  }
 
   cartRewards[rid]=(cartRewards[rid]||0)+1;
-
   updateUserUI();
+  updateCount();
   renderCart();
+  toast('Canje aplicado ✅');
 };
 
-/* Construir enlace de WhatsApp + guardar pedido */
-function buildLink(total){
-  $('#checkout').onclick = async e => {
-    if (!user) {
-      e.preventDefault();
+/* ===========================
+   AUTH (registro/login con Firestore)
+=========================== */
+const authM=$('#authModal');
+const authForm=$('#authForm');
+let loginMode=true;
+
+$('#loginBtn').onclick=()=>authM.classList.add('active');
+$('#closeAuth').onclick=()=>closeAuthModal();
+
+function closeAuthModal(){
+  authM.classList.remove('active');
+  authForm.reset();
+  loginMode=true;
+  $('#authTitle').textContent='Inicia Sesión';
+  $('#authSubmit').textContent='Entrar';
+  $('#extra').style.display='none';
+  $('#pass2').style.display='none';
+  $('#authMsg').textContent='';
+}
+
+$('#toggleAuth').onclick=()=>{
+  loginMode=!loginMode;
+  $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
+  $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
+  $('#extra').style.display=loginMode?'none':'block';
+  $('#pass2').style.display=loginMode?'none':'block';
+  $('#authMsg').textContent='';
+};
+
+/* Geocode registro (referencia) */
+$('#geoBtn').onclick=async()=>{
+  const addr=$('#addr').value.trim();
+  if(!addr) return alert('Ingresa dirección');
+  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
+  if(!d[0]) return alert('No encontrada');
+  const {lat,lon}=d[0];
+  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
+  $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
+  $('#map').style.display='block';
+
+  if(!window._map){
+    window._map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
+  }
+  window._map.setView([lat,lon],13);
+  if(window._mk) window._map.removeLayer(window._mk);
+  window._mk=L.marker([lat,lon]).addTo(window._map);
+
+  if(!user) user={};
+  Object.assign(user,{lat:+lat,lng:+lon,address:addr});
+};
+
+function updateUserUI(){
+  if(user && user.email){
+    $('#userInfo').textContent=`Hola, ${user.nombre || 'Cliente'} (${user.points||0} pts)`;
+    $('#pts').textContent=user.points||0;
+    $('#ptsBox').style.display='block';
+    renderRewards();
+  }else{
+    $('#userInfo').textContent='';
+    $('#ptsBox').style.display='none';
+    $('#rewardsList').innerHTML='';
+  }
+}
+
+$('#authForm').onsubmit = async (e)=>{
+  e.preventDefault();
+
+  const email=$('#email').value.trim().toLowerCase();
+  const pass=$('#pass').value;
+  const pass2=$('#pass2').value;
+  const msg=$('#authMsg');
+  msg.textContent='';
+
+  const submitBtn=$('#authSubmit');
+  submitBtn.disabled=true;
+  submitBtn.textContent = loginMode ? 'Entrando...' : 'Registrando...';
+
+  try{
+    if(loginMode){
+      // LOGIN: leer doc en users/email
+      const snap = await db.collection('users').doc(email).get();
+      if(!snap.exists) throw new Error('No existe una cuenta con ese correo.');
+      const data = snap.data();
+      if((data.pass||'') !== pass) throw new Error('Contraseña incorrecta.');
+      user = data;
+      toast('Sesión iniciada ✅');
+    }else{
+      // REGISTRO
+      if(pass !== pass2) throw new Error('Las contraseñas no coinciden.');
+      if(!user || !user.address) throw new Error('Confirma tu dirección (referencia) antes de registrarte.');
+
+      // Verificar si ya existe
+      const exists = await db.collection('users').doc(email).get();
+      if(exists.exists) throw new Error('Ese correo ya está registrado. Intenta iniciar sesión.');
+
+      user = {
+        ...user,
+        email,
+        pass, // PROTOTIPO: en producción NO guardar pass así
+        nombre:$('#name').value.trim(),
+        apellido:$('#last').value.trim(),
+        phone:normalizePhone($('#phone').value),
+        points:0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await db.collection('users').doc(email).set(user);
+      toast('Cuenta creada ✅');
+    }
+
+    updateUserUI();
+    closeAuthModal();
+
+    if($('#cartModal').classList.contains('wait-login')){
+      $('#cartModal').classList.remove('wait-login');
+      calc();
+      $('#cartModal').classList.add('active');
+    }
+  }catch(err){
+    console.error(err);
+    msg.textContent = err.message || 'Error. Revisa conexión / hosting (no file://).';
+  }finally{
+    submitBtn.disabled=false;
+    submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
+  }
+};
+
+/* ===========================
+   TOTAL + WHATSAPP + FIRESTORE ORDERS
+=========================== */
+function calc(){
+  const sub = parseInt(($('#sub').textContent||'0').replace(/\./g,''))||0;
+  let del=0,km=0;
+  if(delType==='delivery' && orderDelivery){
+    del=orderDelivery.fee; km=orderDelivery.km;
+  }
+  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
+  $('#del').textContent=fmt(del);
+  $('#km').textContent=km;
+
+  const disc = code ? Math.round(sub*CODE[code]) : 0;
+  $('#discRow').style.display=disc?'block':'none';
+  $('#disc').textContent=fmt(disc);
+
+  const tot = sub + del - disc;
+  $('#tot').textContent=fmt(tot);
+
+  buildCheckout(tot, sub, del, disc);
+}
+
+function buildCheckout(total, sub, delCost, disc){
+  $('#checkout').onclick = async (e)=>{
+    e.preventDefault();
+
+    if(!user || !user.email){
       $('#cartModal').classList.remove('active');
       $('#cartModal').classList.add('wait-login');
       authM.classList.add('active');
       return;
     }
-    if (total <= 0) {
-      e.preventDefault();
-      alert("Tu pedido no tiene productos.");
+    if(total<=0){
+      alert('Tu pedido está vacío.');
+      return;
+    }
+    if(delType==='delivery' && (!orderDelivery || !orderDelivery.address)){
+      alert('Confirma la dirección de delivery.');
       return;
     }
 
-    if (delType === 'delivery') {
-      if (!orderDelivery || !orderDelivery.address) {
-        e.preventDefault();
-        alert("Debes confirmar la dirección de entrega.");
+    // Validaciones de tiempo
+    const now=new Date();
+    const minWaitMs=25*60*1000;
+    const minDate=new Date(now.getTime()+minWaitMs);
+    let scheduledDate=null;
+
+    if(whenType==='later'){
+      const dVal=$('#schedDate').value;
+      const tVal=$('#schedTime').value;
+      if(!dVal || !tVal){
+        alert('Selecciona fecha y hora.');
+        return;
+      }
+      const [y,m,d]=dVal.split('-').map(Number);
+      const [hh,mm]=tVal.split(':').map(Number);
+      const dt=new Date(y,m-1,d,hh,mm,0);
+      scheduledDate=dt;
+
+      if(dt < minDate){
+        alert('El pedido debe programarse con mínimo 25 min.');
+        return;
+      }
+      if(!isInSchedule(dt)){
+        alert('Hora fuera del horario de atención.');
+        return;
+      }
+    }else{
+      if(!isOpenNow()){
+        alert('Estamos cerrados ahora. Programa un horario disponible.');
         return;
       }
     }
 
-    const sub = parseInt($('#sub').textContent.replace(/\./g,''))||0;
-    const delCost = (delType==='delivery' && orderDelivery)? orderDelivery.fee : 0;
+    const comment = ($('#orderComment').value||'').trim();
 
-    const now = new Date();
-    const minWaitMs = 25 * 60 * 1000;
-    const minDate = new Date(now.getTime() + minWaitMs);
-    let scheduledDate = null;
-
-    if (whenType === 'later') {
-      const dVal = $('#schedDate').value;
-      const tVal = $('#schedTime').value;
-
-      if (!dVal || !tVal) {
-        e.preventDefault();
-        alert("Selecciona fecha y hora para programar tu pedido.");
-        return;
-      }
-
-      const [y,m,d] = dVal.split('-').map(Number);
-      const [hh,mm] = tVal.split(':').map(Number);
-      const dt = new Date(y,m-1,d,hh,mm,0);
-      scheduledDate = dt;
-
-      if (dt < minDate) {
-        e.preventDefault();
-        alert("El pedido debe programarse al menos 25 minutos más tarde.");
-        return;
-      }
-      if (!isInSchedule(dt)) {
-        e.preventDefault();
-        alert("La hora seleccionada está fuera del horario de atención.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-        return;
-      }
-    } else {
-      if (!isOpenNow()) {
-        e.preventDefault();
-        alert("Estamos cerrados ahora.\nMié–Sáb 18:00–23:00\nDom 12:00–16:00");
-        return;
-      }
-    }
-
-    const comment = ($('#orderComment').value || '').trim();
-
-    // Sumar puntos
-    const earn=Math.floor(total*RATE);
-    if(user && earn>0){
-      const newPoints = (user.points||0) + earn;
-      user.points = newPoints;
-      try{
-        await db.collection('users').doc(user.email).update({
-          points: newPoints
-        });
-      }catch(err){
-        console.error('Error sumando puntos:',err);
-      }
-    }
-
+    // Items para Firestore
     const items = Object.entries(cart).map(([id,q])=>{
-      const it = MENU.find(m=>m.id==id);
-      return {
-        id:+id,
-        name:it?.name || '',
-        qty:q,
-        unitPrice:it?.price || 0,
-        lineTotal:(it?.price || 0)*q
-      };
+      const it=MENU.find(m=>m.id==id);
+      return {id:+id,name:it?.name||'',qty:q,unitPrice:it?.price||0,lineTotal:(it?.price||0)*q};
     });
-
     const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
-      const it = MENU.find(m=>m.id==id);
-      return {
-        id:+id,
-        name:it?.name || '',
-        qty:q,
-        reward:true
-      };
+      const it=MENU.find(m=>m.id==id);
+      return {id:+id,name:it?.name||'',qty:q,reward:true};
     });
 
     const orderData = {
       items,
-      rewards:rewardsItems,
-      subtotal:sub,
-      deliveryCost:delCost,
+      rewards: rewardsItems,
+      subtotal: sub,
+      deliveryCost: delCost,
+      discount: disc,
+      discountCode: code || null,
       total,
-      deliveryType:delType,
-      deliveryAddress:delType==='delivery' && orderDelivery ? orderDelivery.address : null,
-      deliveryKm:delType==='delivery' && orderDelivery ? orderDelivery.km : null,
+      deliveryType: delType,
+      deliveryAddress: (delType==='delivery' && orderDelivery)? orderDelivery.address : null,
+      deliveryKm: (delType==='delivery' && orderDelivery)? orderDelivery.km : null,
       comment,
       whenType,
       scheduledAt: scheduledDate ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       user:{
         email:user.email,
-        nombre:user.nombre || '',
-        apellido:user.apellido || '',
-        phone:user.phone || '',
-        address:user.address || null
+        nombre:user.nombre||'',
+        apellido:user.apellido||'',
+        phone:user.phone||'',
+        address:user.address||null
       },
       status:'pendiente',
       source:'web'
@@ -1142,99 +1108,94 @@ function buildLink(total){
     try{
       await db.collection('orders').add(orderData);
     }catch(err){
-      console.error('Error guardando pedido:',err);
+      console.warn('No se pudo guardar pedido (revisa hosting http/https):',err);
+      // igual seguimos con WhatsApp
     }
 
-    let msg = `Hola Mamma Maggi!%0APedido:%0A`;
-
-    for (const id in cart) {
-      const it = MENU.find(m => m.id == id);
-      msg += `${cart[id]} x ${it.name}%0A`;
+    // Mensaje WhatsApp
+    let msg = `Hola Mamma Maggi!%0A%0A🍕 *Pedido:*%0A`;
+    for(const id in cart){
+      const it=MENU.find(m=>m.id==id);
+      msg += `• ${cart[id]} x ${it.name}%0A`;
+    }
+    for(const rid in cartRewards){
+      const it=MENU.find(m=>m.id==rid);
+      msg += `• ${cartRewards[rid]} x ${it.name} *(canje)*%0A`;
     }
 
-    for (const rid in cartRewards) {
-      const it = MENU.find(m => m.id == rid);
-      msg += `${cartRewards[rid]} x ${it.name} (canje)%0A`;
+    msg += `%0A💰 *Total:* $${fmt(total)}`;
+    if(disc>0) msg += `%0A🏷️ *Descuento:* -$${fmt(disc)} (${code})`;
+
+    if(whenType==='later' && scheduledDate){
+      const dVal=$('#schedDate').value, tVal=$('#schedTime').value;
+      msg += `%0A⏰ *Para:* ${dVal} ${tVal}`;
+    }else{
+      msg += `%0A⏰ *Para:* lo antes posible (mín. 25 min)`;
     }
 
-    msg += `%0ATotal: $${fmt(total)}`;
-
-    if (whenType === 'later' && scheduledDate) {
-      const dVal = $('#schedDate').value;
-      const tVal = $('#schedTime').value;
-      msg += `%0APara: ${dVal} ${tVal}`;
-    } else {
-      msg += `%0APara: Lo antes posible (hoy)`;
+    if(delType==='delivery'){
+      msg += `%0A🚚 *Modalidad:* Delivery`;
+      msg += `%0A📍 *Entrega:* ${orderDelivery.address}`;
+      msg += `%0A📏 *Distancia:* ${orderDelivery.km} km`;
+    }else{
+      msg += `%0A🏠 *Modalidad:* Retiro en local`;
     }
 
-    if (delType === 'delivery') {
-      msg += `%0AModalidad: Delivery`;
-      msg += `%0AEntrega: ${orderDelivery?.address || ''}`;
-    } else {
-      msg += `%0AModalidad: Retiro en local`;
-      if(user.address){
-        msg += `%0ADirección registrada cliente: ${user.address}`;
-      }
-    }
-
-    msg += `%0ATiempo de espera mínimo: 25 minutos`;
-
-    if (comment) msg += `%0AComentario: ${comment}`;
-
-    msg += `%0ATeléfono cliente: ${user.phone || ''}`;
+    if(comment) msg += `%0A📝 *Comentario:* ${comment}`;
+    msg += `%0A📞 *Tel cliente:* ${user.phone||''}`;
 
     const waURL = `https://wa.me/${PHONE}?text=${msg}`;
-    e.currentTarget.href = waURL;
+    window.open(waURL,'_blank');
   };
 }
 
-/* PANEL ADMIN */
+/* ===========================
+   ADMIN PANEL
+=========================== */
 $('#adminEnter').onclick = ()=>{
-  const val = $('#adminPass').value;
-  if(val === ADMIN_PASS){
+  if($('#adminPass').value === ADMIN_PASS){
     $('#adminLogin').style.display='none';
     $('#adminContent').style.display='block';
     loadOrders();
-  }else{
-    alert('Clave incorrecta');
-  }
+  }else alert('Clave incorrecta');
 };
-
 $('#refreshOrders').onclick = loadOrders;
 
 function loadOrders(){
-  const container = $('#ordersList');
+  const container=$('#ordersList');
   container.innerHTML='Cargando pedidos...';
 
   db.collection('orders')
     .orderBy('createdAt','desc')
-    .limit(50)
+    .limit(60)
     .get()
     .then(snap=>{
       if(snap.empty){
-        container.innerHTML='<p style="font-size:.9rem;opacity:.8;">No hay pedidos registrados.</p>';
+        container.innerHTML='<p style="opacity:.85;">No hay pedidos registrados.</p>';
         return;
       }
       container.innerHTML='';
       snap.forEach(doc=>{
-        const data = doc.data();
-        const created = data.createdAt ? data.createdAt.toDate() : null;
-        const fecha = created ? created.toLocaleString('es-CL') : '---';
+        const data=doc.data();
+        const created=data.createdAt ? data.createdAt.toDate() : null;
+        const fecha=created ? created.toLocaleString('es-CL') : '---';
+        const para = data.whenType==='later' && data.scheduledAt ? data.scheduledAt.toDate().toLocaleString('es-CL') : 'ASAP';
 
-        const div = document.createElement('div');
+        const div=document.createElement('div');
         div.className='admin-order';
         div.innerHTML=`
           <div class="admin-order-header">
-            <span>${data.user?.nombre || 'Cliente'}</span>
+            <span>${data.user?.nombre || 'Cliente'} • ${data.user?.phone || ''}</span>
             <span>${fecha}</span>
           </div>
           <div class="admin-order-body">
-            <p><strong>Total:</strong> $${fmt(data.total || 0)}</p>
-            <p><strong>Modalidad:</strong> ${data.deliveryType==='delivery'?'Delivery':'Retiro'}</p>
-            ${data.deliveryAddress ? `<p><strong>Entrega:</strong> ${data.deliveryAddress}</p>`:''}
-            <p><strong>Estado:</strong> ${data.status || 'pendiente'}</p>
+            <p><strong>Total:</strong> $${fmt(data.total||0)} ${data.discount?`<span style="opacity:.8">(-$${fmt(data.discount)} ${data.discountCode||''})</span>`:''}</p>
+            <p><strong>Para:</strong> ${para}</p>
+            <p><strong>Modalidad:</strong> ${data.deliveryType==='delivery'?'Delivery':'Retiro'} ${data.deliveryAddress?`• <strong>Entrega:</strong> ${data.deliveryAddress}`:''}</p>
+            <p><strong>Estado:</strong> ${data.status||'pendiente'}</p>
+            ${data.comment?`<p><strong>Comentario:</strong> ${data.comment}</p>`:''}
             <p><strong>Items:</strong></p>
-            <ul style="margin-left:1rem;">
+            <ul>
               ${(data.items||[]).map(it=>`<li>${it.qty} x ${it.name}</li>`).join('')}
               ${(data.rewards||[]).map(it=>`<li>${it.qty} x ${it.name} (canje)</li>`).join('')}
             </ul>
@@ -1245,14 +1206,32 @@ function loadOrders(){
     })
     .catch(err=>{
       console.error(err);
-      container.innerHTML='<p style="color:#f88;">Error cargando pedidos.</p>';
+      container.innerHTML='<p style="color:#ff9aa2;">Error cargando pedidos. (Tip: no abrir como file://, usa http/https)</p>';
     });
 }
 
-updateUserUI();
+/* ===========================
+   INIT
+=========================== */
+updateOpenBadge();
+setInterval(updateOpenBadge, 60*1000);
+
+renderMenu();
+updateCount();
+renderCart();
+
+/* Programación: si el usuario abre carrito y elige “programar” */
+buildScheduleOptions();
+
+/* ===========================
+   IMPORTANTÍSIMO:
+   Si ves "cliente offline", abre esta página con http/https
+   (Live Server o GitHub Pages), NO con file://
+=========================== */
 </script>
 </body>
 </html>
+
 
 
 
