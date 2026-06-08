@@ -316,7 +316,7 @@ textarea{min-height:80px;resize:vertical}
 
 <section id="admin" class="static-section">
   <h2>Panel Admin</h2>
-  <p style="font-size:.9rem;opacity:.85;">Ingresa la clave de administrador para ver el flujo de pedidos guardados.</p>
+  <p style="font-size:.9rem;opacity:.85;">Ingresa la clave de administrador para ver el flujo de pedidos guardados en Supabase.</p>
   <div id="adminLogin">
     <input type="password" id="adminPass" placeholder="Clave admin" />
     <button class="btn" id="adminEnter" style="margin-top:.4rem;">Entrar</button>
@@ -360,7 +360,7 @@ textarea{min-height:80px;resize:vertical}
     <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.2rem">
       ¿No tienes cuenta? Regístrate
     </p>
-    <small id="authMsg" style="text-align:center;display:block;min-height:1.1rem;color:var(--warn);"></small>
+    <small id="authMsg" style="text-align:center;display:block;min-height:1.1rem;"></small>
   </form>
 </div></div>
 
@@ -428,9 +428,9 @@ textarea{min-height:80px;resize:vertical}
 /* ===========================
    SUPABASE CONFIG
 =========================== */
-// 🛑 PON TUS DATOS AQUÍ:
-const SUPABASE_URL = 'https://vuehdwygosuursxhgeou.supabase.co/rest/v1/';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZWhkd3lnb3N1dXJzeGhnZW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTU5ODEsImV4cCI6MjA5NjQ5MTk4MX0.94DmD4OESzXhjMGJsre1TC8JfDfGc373uBq7NWgT-EU';
+const SUPABASE_URL = 'https://vuehdwygosuursxhgeou.supabase.co/rest/v1/'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZWhkd3lnb3N1dXJzeGhnZW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTU5ODEsImV4cCI6MjA5NjQ5MTk4MX0.94DmD4OESzXhjMGJsre1TC8JfDfGc373uBq7NWgT-EU'; 
+
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ===========================
@@ -464,14 +464,22 @@ const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
 const $=q=>document.querySelector(q);
 const fmt=n=>Number(n||0).toLocaleString('es-CL');
 
-const CODE={ MAGGI10:0.10, PIZZA5:0.05, PRIMERA8:0.08, CLUB12:0.12 };
+/* Descuentos (ejemplos) */
+const CODE={
+  MAGGI10:0.10,       // 10%
+  PIZZA5:0.05,        // 5%
+  PRIMERA8:0.08,      // 8%
+  CLUB12:0.12         // 12%
+};
 
+/* Recompensas con puntos */
 const REWARDS=[
   {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
   {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
   {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'}
 ];
 
+/* Admin */
 const ADMIN_PASS = "mamma2025";
 
 /* ===========================
@@ -483,7 +491,7 @@ let cartRewards={};
 let delType='pickup';
 let code=null;
 let whenType='now';
-let orderDelivery=null;
+let orderDelivery=null; // {address,km,fee,lat,lng}
 
 /* ===========================
    UTIL
@@ -505,8 +513,9 @@ function dist(a,b,c,d){
   return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
 }
 
+/* Horario: Mié–Sáb 18-23, Dom 12-16 */
 function isInSchedule(dateObj){
-  const day=dateObj.getDay();
+  const day=dateObj.getDay(); // 0=domingo
   const hour=dateObj.getHours();
   const min=dateObj.getMinutes();
   if(day===0) return hour>=12 && (hour<16 || (hour===16 && min===0));
@@ -521,18 +530,22 @@ function updateOpenBadge(){
 }
 
 /* ===========================
-   RENDER MENU
+   RENDER MENU (con filtros)
 =========================== */
 function getFilteredMenu(){
   const q=($('#search').value||'').trim().toLowerCase();
   const cat=$('#cat').value;
   const sort=$('#sort').value;
+
   let arr=[...MENU];
+
   if(cat!=='all') arr=arr.filter(x=>x.cat===cat);
   if(q) arr=arr.filter(x=>(x.name+' '+x.desc).toLowerCase().includes(q));
+
   if(sort==='priceAsc') arr.sort((a,b)=>a.price-b.price);
   if(sort==='priceDesc') arr.sort((a,b)=>b.price-a.price);
   if(sort==='nameAsc') arr.sort((a,b)=>a.name.localeCompare(b.name,'es'));
+
   return arr;
 }
 
@@ -540,10 +553,14 @@ function renderMenu(){
   const grid=$('#menuGrid');
   grid.innerHTML='';
   const items=getFilteredMenu();
+
   if(!items.length){
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:.85;padding:1rem;">No encontramos productos con ese filtro.</div>`;
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:.85;padding:1rem;">
+      No encontramos productos con ese filtro.
+    </div>`;
     return;
   }
+
   items.forEach(i=>{
     const c=document.createElement('div');
     c.className='card';
@@ -560,6 +577,7 @@ function renderMenu(){
     grid.appendChild(c);
   });
 }
+
 $('#search').addEventListener('input',renderMenu);
 $('#cat').addEventListener('change',renderMenu);
 $('#sort').addEventListener('change',renderMenu);
@@ -572,41 +590,79 @@ function updateCount(){
   $('#cartCount').textContent=cnt;
 }
 function renderCart(){
-  const w=$('#cartItems'), s=$('#sideCartItems');
+  const w=$('#cartItems');
+  const s=$('#sideCartItems');
   w.innerHTML=''; s.innerHTML='';
+
   let sub=0;
+
   for(const id in cart){
     const it=MENU.find(m=>m.id==id), q=cart[id];
-    w.innerHTML+=`<div class='cart-item'><span>${it.name}</span><div class='qty' data-id='${id}'><button class='dec'>-</button><span>${q}</span><button class='inc'>+</button></div><span>$${fmt(it.price*q)}</span></div>`;
-    s.innerHTML+=`<div class="side-line"><span>${q} x ${it.name}</span><span>$${fmt(it.price*q)}</span></div>`;
+    w.innerHTML+=`
+      <div class='cart-item'>
+        <span>${it.name}</span>
+        <div class='qty' data-id='${id}'>
+          <button class='dec'>-</button>
+          <span>${q}</span>
+          <button class='inc'>+</button>
+        </div>
+        <span>$${fmt(it.price*q)}</span>
+      </div>`;
+    s.innerHTML+=`
+      <div class="side-line">
+        <span>${q} x ${it.name}</span>
+        <span>$${fmt(it.price*q)}</span>
+      </div>`;
     sub+=it.price*q;
   }
+
   for(const rid in cartRewards){
     const it=MENU.find(m=>m.id==rid), q=cartRewards[rid];
-    w.innerHTML+=`<div class='cart-item'><span>${it.name} (canje)</span><span>${q} x</span><span>$0</span></div>`;
-    s.innerHTML+=`<div class="side-line"><span>${q} x ${it.name} (canje)</span><span>$0</span></div>`;
+    w.innerHTML+=`
+      <div class='cart-item'>
+        <span>${it.name} (canje)</span>
+        <span>${q} x</span>
+        <span>$0</span>
+      </div>`;
+    s.innerHTML+=`
+      <div class="side-line">
+        <span>${q} x ${it.name} (canje)</span>
+        <span>$0</span>
+      </div>`;
   }
+
+  // Lógica para agregar o quitar la clase al contenedor principal
   if(!Object.keys(cart).length && !Object.keys(cartRewards).length){
     $('#sideCart').style.display='none';
-    $('.main-layout').classList.remove('with-cart');
+    $('.main-layout').classList.remove('with-cart'); // Centra el menú
   }else{
     $('#sideCart').style.display='block';
-    $('.main-layout').classList.add('with-cart');
+    $('.main-layout').classList.add('with-cart'); // Desplaza el menú para hacer espacio al carrito
   }
+
   $('#sub').textContent=fmt(sub);
   $('#sideTotal').textContent='Subtotal: $'+fmt(sub);
+
   calc();
 }
+
+/* Add to cart click */
 $('#menuGrid').addEventListener('click', (e)=>{
   const btn=e.target.closest('button[data-id]');
   if(!btn) return;
   const id=+btn.dataset.id;
   cart[id]=(cart[id]||0)+1;
-  updateCount(); renderCart(); toast('Agregado al carrito ✅');
+  updateCount();
+  renderCart();
+  toast('Agregado al carrito ✅');
 });
+
+/* Cart modal open/close */
 $('#cartBtn').onclick=()=>{ renderCart(); $('#cartModal').classList.add('active'); };
 $('#openCartFromSide').onclick=()=>{ renderCart(); $('#cartModal').classList.add('active'); };
 $('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
+
+/* qty changes */
 $('#cartItems').onclick=e=>{
   const qwrap=e.target.closest('.qty');
   if(!qwrap) return;
@@ -614,11 +670,12 @@ $('#cartItems').onclick=e=>{
   if(e.target.classList.contains('inc')) cart[id]++;
   if(e.target.classList.contains('dec')) cart[id]=Math.max(0,cart[id]-1);
   if(!cart[id]) delete cart[id];
-  updateCount(); renderCart();
+  updateCount();
+  renderCart();
 };
 
 /* ===========================
-   DELIVERY Y CUPONES
+   DELIVERY
 =========================== */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
@@ -626,10 +683,13 @@ document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
     $('#deliveryDetails').style.display='block';
   }else{
     $('#deliveryDetails').style.display='none';
-    $('#delRow').style.display='none'; orderDelivery=null; $('#delDistText').textContent='';
+    $('#delRow').style.display='none';
+    orderDelivery=null;
+    $('#delDistText').textContent='';
   }
   calc();
 });
+
 $('#delGeoBtn').onclick=async()=>{
   const addr=$('#delAddr').value.trim();
   if(!addr) return alert('Ingresa dirección de entrega');
@@ -642,6 +702,10 @@ $('#delGeoBtn').onclick=async()=>{
   $('#delDistText').textContent=`Delivery a ${km} km • Costo: $${fmt(fee)}`;
   calc();
 };
+
+/* ===========================
+   CUPÓN
+=========================== */
 $('#couponBtn').onclick=()=>{
   const c=($('#coupon').value||'').trim().toUpperCase();
   code = CODE[c] ? c : null;
@@ -650,110 +714,180 @@ $('#couponBtn').onclick=()=>{
 };
 
 /* ===========================
-   PROGRAMAR HORARIO
+   PROGRAMAR (cada 15 min)
 =========================== */
 document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
   whenType=e.target.value;
   if(whenType==='later'){
-    $('#scheduleFields').style.display='flex'; buildScheduleOptions();
+    $('#scheduleFields').style.display='flex';
+    buildScheduleOptions();
   }else{
-    $('#scheduleFields').style.display='none'; $('#scheduleHint').textContent='';
+    $('#scheduleFields').style.display='none';
+    $('#scheduleHint').textContent='';
   }
 });
+
 function getOpenWindowsForDay(dayIdx){
   if(dayIdx===0) return [{start:12,end:16}];
   if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}];
   return [];
 }
+
 function buildScheduleOptions(){
-  const dateSel=$('#schedDate'), timeSel=$('#schedTime');
+  const dateSel=$('#schedDate');
+  const timeSel=$('#schedTime');
   dateSel.innerHTML=''; timeSel.innerHTML='';
+
   const now=new Date();
   for(let i=0;i<7;i++){
-    const d=new Date(); d.setDate(now.getDate()+i);
+    const d=new Date();
+    d.setDate(now.getDate()+i);
     const win=getOpenWindowsForDay(d.getDay());
     if(!win.length) continue;
-    const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+
+    const yyyy=d.getFullYear();
+    const mm=String(d.getMonth()+1).padStart(2,'0');
+    const dd=String(d.getDate()).padStart(2,'0');
+    const value=`${yyyy}-${mm}-${dd}`;
+    const label=d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric', month:'short'});
     const opt=document.createElement('option');
-    opt.value=`${yyyy}-${mm}-${dd}`;
-    opt.textContent=d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric', month:'short'});
+    opt.value=value; opt.textContent=label;
     dateSel.appendChild(opt);
   }
+
   if(!dateSel.options.length){
     dateSel.innerHTML='<option value="">Sin días disponibles</option>';
-    timeSel.innerHTML='<option value="">Sin horarios</option>'; return;
+    timeSel.innerHTML='<option value="">Sin horarios</option>';
+    $('#scheduleHint').textContent='No hay días disponibles para programar.';
+    return;
   }
-  dateSel.onchange=rebuildTimeOptions; rebuildTimeOptions();
+
+  dateSel.onchange=rebuildTimeOptions;
+  rebuildTimeOptions();
 }
+
 function rebuildTimeOptions(){
-  const dateSel=$('#schedDate'), timeSel=$('#schedTime');
+  const dateSel=$('#schedDate');
+  const timeSel=$('#schedTime');
   timeSel.innerHTML='';
   const val=dateSel.value;
-  if(!val) return timeSel.innerHTML='<option value="">Selecciona fecha</option>';
+  if(!val){
+    timeSel.innerHTML='<option value="">Selecciona fecha</option>';
+    return;
+  }
+
   const [y,m,d]=val.split('-').map(Number);
   const base=new Date(y,m-1,d);
   const windows=getOpenWindowsForDay(base.getDay());
-  if(!windows.length) return timeSel.innerHTML='<option value="">Sin horarios</option>';
-  const now=new Date(), minDate=new Date(now.getTime()+25*60*1000);
+  if(!windows.length){
+    timeSel.innerHTML='<option value="">Sin horarios</option>';
+    return;
+  }
+
+  const now=new Date();
+  const minWaitMs=25*60*1000;
+  const minDate=new Date(now.getTime()+minWaitMs);
+
   windows.forEach(win=>{
     for(let h=win.start; h<win.end; h++){
       for(let min=0; min<60; min+=15){
         const slot=new Date(y,m-1,d,h,min,0);
         const v=`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
-        const opt=document.createElement('option'); opt.value=v; opt.textContent=v;
-        if(slot.toDateString()===now.toDateString() && slot<minDate){ opt.disabled=true; opt.textContent=v+' (no disponible)'; }
+        const opt=document.createElement('option');
+        opt.value=v;
+        opt.textContent=v;
+
+        // deshabilitar si es hoy y menor que 25 min
+        if(slot.toDateString()===now.toDateString() && slot<minDate){
+          opt.disabled=true;
+          opt.textContent=v+' (no disponible)';
+        }
         timeSel.appendChild(opt);
       }
     }
   });
+
   const firstEnabled=[...timeSel.options].find(o=>!o.disabled && o.value);
   if(firstEnabled) timeSel.value=firstEnabled.value;
-  $('#scheduleHint').textContent='Mínimo 25 min. Intervalos de 15 min.';
+
+  $('#scheduleHint').textContent='Programación disponible solo dentro del horario. Mínimo 25 min. Intervalos de 15 min.';
 }
 
 /* ===========================
-   AUTH & REWARDS (SUPABASE)
+   REWARDS (PUNTOS)
 =========================== */
 function renderRewards(){
-  const box=$('#rewardsList'); box.innerHTML='';
+  const box=$('#rewardsList');
+  box.innerHTML='';
   if(!user) return;
   REWARDS.forEach(r=>{
-    const it=MENU.find(m=>m.id===r.id); if(!it) return;
+    const it=MENU.find(m=>m.id===r.id);
+    if(!it) return;
     const can=(user.points||0) >= r.pts;
-    box.innerHTML += `<div class="reward-item"><span>${r.label}</span><button class="btn" data-rid="${r.id}" ${can?'':'disabled'}>${can?'Canjear':'No alcanza'}</button></div>`;
+    box.innerHTML += `
+      <div class="reward-item">
+        <span>${r.label}</span>
+        <button class="btn" data-rid="${r.id}" ${can?'':'disabled'}>${can?'Canjear':'No alcanza'}</button>
+      </div>`;
   });
 }
+
 $('#rewardsList').onclick=async(e)=>{
   const btn=e.target.closest('button[data-rid]');
   if(!btn || !user) return;
-  const rid=+btn.dataset.rid, reward=REWARDS.find(r=>r.id===rid);
-  if(!reward || (user.points||0) < reward.pts) return;
-  user.points = (user.points||0) - reward.pts;
-  
+  const rid=+btn.dataset.rid;
+  const reward=REWARDS.find(r=>r.id===rid);
+  if(!reward) return;
+  if((user.points||0) < reward.pts) return;
+
+  user.points=(user.points||0)-reward.pts;
+
   // Guardar puntos en Supabase
-  await supabase.from('perfiles').update({ points: user.points }).eq('email', user.email);
+  try{
+    const { error } = await supabase.from('perfiles').update({ points: user.points }).eq('email', user.email);
+    if(error) throw error;
+  }catch(err){
+    console.warn('No se pudo guardar puntos en Supabase:',err);
+  }
 
   cartRewards[rid]=(cartRewards[rid]||0)+1;
-  updateUserUI(); updateCount(); renderCart(); toast('Canje aplicado ✅');
+  updateUserUI();
+  updateCount();
+  renderCart();
+  toast('Canje aplicado ✅');
 };
 
-const authM=$('#authModal'), authForm=$('#authForm');
+/* ===========================
+   AUTH (registro/login con Supabase)
+=========================== */
+const authM=$('#authModal');
+const authForm=$('#authForm');
 let loginMode=true;
+
 $('#loginBtn').onclick=()=>authM.classList.add('active');
 $('#closeAuth').onclick=()=>closeAuthModal();
 
 function closeAuthModal(){
-  authM.classList.remove('active'); authForm.reset(); loginMode=true;
-  $('#authTitle').textContent='Inicia Sesión'; $('#authSubmit').textContent='Entrar';
-  $('#extra').style.display='none'; $('#pass2').style.display='none'; $('#authMsg').textContent='';
+  authM.classList.remove('active');
+  authForm.reset();
+  loginMode=true;
+  $('#authTitle').textContent='Inicia Sesión';
+  $('#authSubmit').textContent='Entrar';
+  $('#extra').style.display='none';
+  $('#pass2').style.display='none';
+  $('#authMsg').textContent='';
 }
+
 $('#toggleAuth').onclick=()=>{
   loginMode=!loginMode;
   $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
   $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
   $('#extra').style.display=loginMode?'none':'block';
-  $('#pass2').style.display=loginMode?'none':'block'; $('#authMsg').textContent='';
+  $('#pass2').style.display=loginMode?'none':'block';
+  $('#authMsg').textContent='';
 };
+
+/* Geocode registro (referencia) */
 $('#geoBtn').onclick=async()=>{
   const addr=$('#addr').value.trim();
   if(!addr) return alert('Ingresa dirección');
@@ -763,6 +897,7 @@ $('#geoBtn').onclick=async()=>{
   const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
   $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
   $('#map').style.display='block';
+
   if(!window._map){
     window._map=L.map('map').setView([lat,lon],13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
@@ -770,146 +905,253 @@ $('#geoBtn').onclick=async()=>{
   window._map.setView([lat,lon],13);
   if(window._mk) window._map.removeLayer(window._mk);
   window._mk=L.marker([lat,lon]).addTo(window._map);
+
   if(!user) user={};
   Object.assign(user,{lat:+lat,lng:+lon,address:addr});
 };
+
 function updateUserUI(){
   if(user && user.email){
     $('#userInfo').textContent=`Hola, ${user.nombre || 'Cliente'} (${user.points||0} pts)`;
-    $('#pts').textContent=user.points||0; $('#ptsBox').style.display='block'; renderRewards();
+    $('#pts').textContent=user.points||0;
+    $('#ptsBox').style.display='block';
+    renderRewards();
   }else{
-    $('#userInfo').textContent=''; $('#ptsBox').style.display='none'; $('#rewardsList').innerHTML='';
+    $('#userInfo').textContent='';
+    $('#ptsBox').style.display='none';
+    $('#rewardsList').innerHTML='';
   }
 }
 
-// LÓGICA DE REGISTRO SUPABASE
 $('#authForm').onsubmit = async (e)=>{
   e.preventDefault();
-  const email=$('#email').value.trim().toLowerCase(), pass=$('#pass').value, pass2=$('#pass2').value, msg=$('#authMsg');
+
+  const email=$('#email').value.trim().toLowerCase();
+  const pass=$('#pass').value;
+  const pass2=$('#pass2').value;
+  const msg=$('#authMsg');
   msg.textContent='';
+
   const submitBtn=$('#authSubmit');
-  submitBtn.disabled=true; submitBtn.textContent = loginMode ? 'Entrando...' : 'Registrando...';
-  
+  submitBtn.disabled=true;
+  submitBtn.textContent = loginMode ? 'Entrando...' : 'Registrando...';
+
   try{
     if(loginMode){
-      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      if(error) throw error;
-      const { data: perfil } = await supabase.from('perfiles').select('*').eq('email', email).single();
+      // LOGIN Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if(authError) throw new Error('Credenciales incorrectas o el usuario no existe.');
+      
+      const { data: perfil, error: perfilError } = await supabase.from('perfiles').select('*').eq('email', email).single();
+      if(perfilError) throw new Error('Error al obtener los datos del perfil.');
+      
       user = perfil;
       toast('Sesión iniciada ✅');
     }else{
+      // REGISTRO Supabase
       if(pass !== pass2) throw new Error('Las contraseñas no coinciden.');
-      if(!user || !user.address) throw new Error('Confirma tu dirección antes de registrarte.');
-      const { error: signUpError } = await supabase.auth.signUp({ email, password: pass });
-      if(signUpError) throw signUpError;
+      if(!user || !user.address) throw new Error('Confirma tu dirección (referencia) antes de registrarte.');
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password: pass });
+      if(signUpError) throw new Error('Error de registro: ' + signUpError.message);
+
+      const nuevoPerfil = {
+        email: email,
+        nombre: $('#name').value.trim(),
+        apellido: $('#last').value.trim(),
+        phone: normalizePhone($('#phone').value),
+        address: $('#addr').value,
+        points: 0
+      };
       
-      const nuevoPerfil = { email, nombre:$('#name').value.trim(), apellido:$('#last').value.trim(), phone:normalizePhone($('#phone').value), address:$('#addr').value, points:0 };
       const { error: insertError } = await supabase.from('perfiles').insert([nuevoPerfil]);
-      if(insertError) throw insertError;
+      if(insertError) throw new Error('Error al guardar datos adicionales del usuario.');
+      
       user = nuevoPerfil;
       toast('Cuenta creada ✅');
     }
-    updateUserUI(); closeAuthModal();
+
+    updateUserUI();
+    closeAuthModal();
+
     if($('#cartModal').classList.contains('wait-login')){
-      $('#cartModal').classList.remove('wait-login'); calc(); $('#cartModal').classList.add('active');
+      $('#cartModal').classList.remove('wait-login');
+      calc();
+      $('#cartModal').classList.add('active');
     }
   }catch(err){
-    console.error(err); msg.textContent = err.message;
+    console.error(err);
+    msg.textContent = err.message || 'Error. Revisa tu conexión.';
   }finally{
-    submitBtn.disabled=false; submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
+    submitBtn.disabled=false;
+    submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
   }
 };
 
 /* ===========================
-   CALCULAR TOTAL Y WHATSAPP
+   TOTAL + WHATSAPP + SUPABASE ORDERS
 =========================== */
 function calc(){
   const sub = parseInt(($('#sub').textContent||'0').replace(/\./g,''))||0;
   let del=0,km=0;
-  if(delType==='delivery' && orderDelivery){ del=orderDelivery.fee; km=orderDelivery.km; }
+  if(delType==='delivery' && orderDelivery){
+    del=orderDelivery.fee; km=orderDelivery.km;
+  }
   $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
-  $('#del').textContent=fmt(del); $('#km').textContent=km;
+  $('#del').textContent=fmt(del);
+  $('#km').textContent=km;
+
   const disc = code ? Math.round(sub*CODE[code]) : 0;
-  $('#discRow').style.display=disc?'block':'none'; $('#disc').textContent=fmt(disc);
+  $('#discRow').style.display=disc?'block':'none';
+  $('#disc').textContent=fmt(disc);
+
   const tot = sub + del - disc;
   $('#tot').textContent=fmt(tot);
+
   buildCheckout(tot, sub, del, disc);
 }
 
 function buildCheckout(total, sub, delCost, disc){
   $('#checkout').onclick = async (e)=>{
     e.preventDefault();
+
     if(!user || !user.email){
-      $('#cartModal').classList.remove('active'); $('#cartModal').classList.add('wait-login'); authM.classList.add('active'); return;
+      $('#cartModal').classList.remove('active');
+      $('#cartModal').classList.add('wait-login');
+      authM.classList.add('active');
+      return;
     }
-    if(total<=0) return alert('Tu pedido está vacío.');
-    if(delType==='delivery' && (!orderDelivery || !orderDelivery.address)) return alert('Confirma la dirección de delivery.');
-    
+    if(total<=0){
+      alert('Tu pedido está vacío.');
+      return;
+    }
+    if(delType==='delivery' && (!orderDelivery || !orderDelivery.address)){
+      alert('Confirma la dirección de delivery.');
+      return;
+    }
+
+    // Validaciones de tiempo
+    const now=new Date();
+    const minWaitMs=25*60*1000;
+    const minDate=new Date(now.getTime()+minWaitMs);
     let scheduledDate=null;
+
     if(whenType==='later'){
-      const dVal=$('#schedDate').value, tVal=$('#schedTime').value;
-      if(!dVal || !tVal) return alert('Selecciona fecha y hora.');
-      const [y,m,d]=dVal.split('-').map(Number), [hh,mm]=tVal.split(':').map(Number);
-      scheduledDate = new Date(y,m-1,d,hh,mm,0);
-      if(scheduledDate < new Date(new Date().getTime()+25*60*1000)) return alert('Mínimo 25 min.');
-      if(!isInSchedule(scheduledDate)) return alert('Hora fuera del horario de atención.');
+      const dVal=$('#schedDate').value;
+      const tVal=$('#schedTime').value;
+      if(!dVal || !tVal){
+        alert('Selecciona fecha y hora.');
+        return;
+      }
+      const [y,m,d]=dVal.split('-').map(Number);
+      const [hh,mm]=tVal.split(':').map(Number);
+      const dt=new Date(y,m-1,d,hh,mm,0);
+      scheduledDate=dt;
+
+      if(dt < minDate){
+        alert('El pedido debe programarse con mínimo 25 min.');
+        return;
+      }
+      if(!isInSchedule(dt)){
+        alert('Hora fuera del horario de atención.');
+        return;
+      }
     }else{
-      if(!isOpenNow()) return alert('Estamos cerrados ahora. Programa un horario disponible.');
+      if(!isOpenNow()){
+        alert('Estamos cerrados ahora. Programa un horario disponible.');
+        return;
+      }
     }
-    
+
     const comment = ($('#orderComment').value||'').trim();
+
+    // Items para Supabase
     const items = Object.entries(cart).map(([id,q])=>{
-      const it=MENU.find(m=>m.id==id); return {id:+id,name:it?.name||'',qty:q,unitPrice:it?.price||0,lineTotal:(it?.price||0)*q};
+      const it=MENU.find(m=>m.id==id);
+      return {id:+id,name:it?.name||'',qty:q,unitPrice:it?.price||0,lineTotal:(it?.price||0)*q};
     });
     const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
-      const it=MENU.find(m=>m.id==id); return {id:+id,name:it?.name||'',qty:q,reward:true};
+      const it=MENU.find(m=>m.id==id);
+      return {id:+id,name:it?.name||'',qty:q,reward:true};
     });
 
     const orderData = {
-      user_email: user.email,
-      total: total,
       items: items,
       rewards: rewardsItems,
+      subtotal: sub,
+      delivery_cost: delCost,
+      discount: disc,
+      discount_code: code || null,
+      total: total,
       delivery_type: delType,
       delivery_address: (delType==='delivery' && orderDelivery)? orderDelivery.address : null,
+      delivery_km: (delType==='delivery' && orderDelivery)? orderDelivery.km : null,
       comment: comment,
-      status: 'pendiente'
+      when_type: whenType,
+      scheduled_at: scheduledDate ? scheduledDate.toISOString() : null,
+      user_email: user.email,
+      user_data: {
+        nombre: user.nombre||'',
+        apellido: user.apellido||'',
+        phone: user.phone||'',
+        address: user.address||null
+      },
+      status: 'pendiente',
+      source: 'web'
     };
 
-    // GUARDAR EN SUPABASE
     try{
-      await supabase.from('pedidos').insert([orderData]);
-    }catch(err){ console.warn('Error al guardar pedido:', err); }
+      const { error } = await supabase.from('pedidos').insert([orderData]);
+      if(error) throw error;
+    }catch(err){
+      console.warn('No se pudo guardar pedido en Supabase:',err);
+    }
 
-    // MENSAJE WHATSAPP
+    // Mensaje WhatsApp
     let msg = `Hola Mamma Maggi!%0A%0A🍕 *Pedido:*%0A`;
-    for(const id in cart) msg += `• ${cart[id]} x ${MENU.find(m=>m.id==id).name}%0A`;
-    for(const rid in cartRewards) msg += `• ${cartRewards[rid]} x ${MENU.find(m=>m.id==rid).name} *(canje)*%0A`;
+    for(const id in cart){
+      const it=MENU.find(m=>m.id==id);
+      msg += `• ${cart[id]} x ${it.name}%0A`;
+    }
+    for(const rid in cartRewards){
+      const it=MENU.find(m=>m.id==rid);
+      msg += `• ${cartRewards[rid]} x ${it.name} *(canje)*%0A`;
+    }
+
     msg += `%0A💰 *Total:* $${fmt(total)}`;
     if(disc>0) msg += `%0A🏷️ *Descuento:* -$${fmt(disc)} (${code})`;
+
     if(whenType==='later' && scheduledDate){
-      msg += `%0A⏰ *Para:* ${$('#schedDate').value} ${$('#schedTime').value}`;
+      const dVal=$('#schedDate').value, tVal=$('#schedTime').value;
+      msg += `%0A⏰ *Para:* ${dVal} ${tVal}`;
     }else{
-      msg += `%0A⏰ *Para:* lo antes posible`;
+      msg += `%0A⏰ *Para:* lo antes posible (mín. 25 min)`;
     }
+
     if(delType==='delivery'){
-      msg += `%0A🚚 *Modalidad:* Delivery%0A📍 *Entrega:* ${orderDelivery.address}%0A📏 *Distancia:* ${orderDelivery.km} km`;
+      msg += `%0A🚚 *Modalidad:* Delivery`;
+      msg += `%0A📍 *Entrega:* ${orderDelivery.address}`;
+      msg += `%0A📏 *Distancia:* ${orderDelivery.km} km`;
     }else{
       msg += `%0A🏠 *Modalidad:* Retiro en local`;
     }
+
     if(comment) msg += `%0A📝 *Comentario:* ${comment}`;
     msg += `%0A📞 *Tel cliente:* ${user.phone||''}`;
-    
-    window.open(`https://wa.me/${PHONE}?text=${msg}`,'_blank');
+
+    const waURL = `https://wa.me/${PHONE}?text=${msg}`;
+    window.open(waURL,'_blank');
   };
 }
 
 /* ===========================
-   ADMIN PANEL SUPABASE
+   ADMIN PANEL (SUPABASE)
 =========================== */
 $('#adminEnter').onclick = ()=>{
   if($('#adminPass').value === ADMIN_PASS){
-    $('#adminLogin').style.display='none'; $('#adminContent').style.display='block'; loadOrders();
+    $('#adminLogin').style.display='none';
+    $('#adminContent').style.display='block';
+    loadOrders();
   }else alert('Clave incorrecta');
 };
 $('#refreshOrders').onclick = loadOrders;
@@ -917,36 +1159,53 @@ $('#refreshOrders').onclick = loadOrders;
 async function loadOrders(){
   const container=$('#ordersList');
   container.innerHTML='Cargando pedidos...';
-  
-  const { data, error } = await supabase.from('pedidos').select('*').order('created_at', { ascending: false }).limit(60);
-  
-  if(error){
+
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(60);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      container.innerHTML='<p style="opacity:.85;">No hay pedidos registrados.</p>';
+      return;
+    }
+
+    container.innerHTML='';
+    data.forEach(dataItem=>{
+      const created=dataItem.created_at ? new Date(dataItem.created_at) : null;
+      const fecha=created ? created.toLocaleString('es-CL') : '---';
+      const para = dataItem.when_type==='later' && dataItem.scheduled_at ? new Date(dataItem.scheduled_at).toLocaleString('es-CL') : 'ASAP';
+
+      const div=document.createElement('div');
+      div.className='admin-order';
+      div.innerHTML=`
+        <div class="admin-order-header">
+          <span>${dataItem.user_data?.nombre || dataItem.user_email || 'Cliente'} • ${dataItem.user_data?.phone || ''}</span>
+          <span>${fecha}</span>
+        </div>
+        <div class="admin-order-body">
+          <p><strong>Total:</strong> $${fmt(dataItem.total||0)} ${dataItem.discount?`<span style="opacity:.8">(-$${fmt(dataItem.discount)} ${dataItem.discount_code||''})</span>`:''}</p>
+          <p><strong>Para:</strong> ${para}</p>
+          <p><strong>Modalidad:</strong> ${dataItem.delivery_type==='delivery'?'Delivery':'Retiro'} ${dataItem.delivery_address?`• <strong>Entrega:</strong> ${dataItem.delivery_address}`:''}</p>
+          <p><strong>Estado:</strong> ${dataItem.status||'pendiente'}</p>
+          ${dataItem.comment?`<p><strong>Comentario:</strong> ${dataItem.comment}</p>`:''}
+          <p><strong>Items:</strong></p>
+          <ul>
+            ${(dataItem.items||[]).map(it=>`<li>${it.qty} x ${it.name}</li>`).join('')}
+            ${(dataItem.rewards||[]).map(it=>`<li>${it.qty} x ${it.name} (canje)</li>`).join('')}
+          </ul>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  } catch(err) {
+    console.error(err);
     container.innerHTML='<p style="color:#ff9aa2;">Error cargando pedidos de Supabase.</p>';
-    return console.error(error);
   }
-  if(!data || data.length === 0){
-    container.innerHTML='<p style="opacity:.85;">No hay pedidos registrados.</p>'; return;
-  }
-  
-  container.innerHTML='';
-  data.forEach(dataItem=>{
-    const fecha = new Date(dataItem.created_at).toLocaleString('es-CL');
-    const div=document.createElement('div');
-    div.className='admin-order';
-    div.innerHTML=`
-      <div class="admin-order-header">
-        <span>Usuario: ${dataItem.user_email}</span>
-        <span>${fecha}</span>
-      </div>
-      <div class="admin-order-body">
-        <p><strong>Total:</strong> $${fmt(dataItem.total||0)}</p>
-        <p><strong>Modalidad:</strong> ${dataItem.delivery_type==='delivery'?'Delivery':'Retiro'} ${dataItem.delivery_address?`• <strong>Entrega:</strong> ${dataItem.delivery_address}`:''}</p>
-        <p><strong>Estado:</strong> ${dataItem.status||'pendiente'}</p>
-        ${dataItem.comment?`<p><strong>Comentario:</strong> ${dataItem.comment}</p>`:''}
-      </div>
-    `;
-    container.appendChild(div);
-  });
 }
 
 /* ===========================
@@ -954,10 +1213,14 @@ async function loadOrders(){
 =========================== */
 updateOpenBadge();
 setInterval(updateOpenBadge, 60*1000);
+
 renderMenu();
 updateCount();
 renderCart();
+
+/* Programación: si el usuario abre carrito y elige “programar” */
 buildScheduleOptions();
+
 </script>
 </body>
 </html>
