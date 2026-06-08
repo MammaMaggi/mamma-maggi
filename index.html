@@ -7,9 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-<!-- Firebase (compat) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 :root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a;--muted:#b9b9b9;--ok:#2ecc71;--warn:#f1c40f}
@@ -439,19 +437,50 @@ textarea{min-height:80px;resize:vertical}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ===========================
-   FIREBASE INIT (FIRESTORE)
+   supasebase
 =========================== */
-const firebaseConfig = {
-  apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
-  authDomain: "mamma-maggi.firebaseapp.com",
-  projectId: "mamma-maggi",
-  storageBucket: "mamma-maggi.firebasestorage.app",
-  messagingSenderId: "148248596670",
-  appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
-  measurementId: "G-L8ZT1KN1YC"
+const SUPABASE_URL = 'https://vuehdwygosuursxhgeou.supabase.co/rest/v1/'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1ZWhkd3lnb3N1dXJzeGhnZW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTU5ODEsImV4cCI6MjA5NjQ5MTk4MX0.94DmD4OESzXhjMGJsre1TC8JfDfGc373uBq7NWgT-EU'; 
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  $('#authForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $('#email').value.trim().toLowerCase();
+  const pass = $('#pass').value;
+  const msg = $('#authMsg');
+  
+  try {
+    if (loginMode) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      const { data: perfil } = await supabase.from('perfiles').select('*').eq('email', email).single();
+      user = perfil;
+      toast('Sesión iniciada ✅');
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password: pass });
+      if (error) throw error;
+      const nuevoPerfil = { email, nombre: $('#name').value.trim(), apellido: $('#last').value.trim(), phone: $('#phone').value, address: $('#addr').value, points: 0 };
+      await supabase.from('perfiles').insert([nuevoPerfil]);
+      user = nuevoPerfil;
+      toast('Cuenta creada ✅');
+    }
+    updateUserUI();
+    closeAuthModal();
+  } catch (err) { msg.textContent = err.message; }
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+  async function guardarPedido(orderData) {
+  try {
+    await supabase.from('pedidos').insert([{
+      user_email: user.email,
+      total: orderData.total,
+      items: orderData,
+      delivery_type: orderData.deliveryType
+    }]);
+  } catch (err) { console.warn('Error al guardar:', err); }
+}
+  async function loadOrders() {
+  const { data, error } = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+  if (error) return console.error(error);
 
 /* ===========================
    DATOS
