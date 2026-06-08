@@ -89,10 +89,17 @@ nav a:hover{opacity:1;text-decoration:underline}
   margin:auto;
   padding:1.2rem 1rem 2rem;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 340px;
+  /* Modificado: Por defecto ocupa el 100% (centrado) */
+  grid-template-columns: 1fr;
   gap:1.5rem;
   align-items:flex-start;
+  transition: grid-template-columns 0.3s ease;
 }
+/* Modificado: Clase que se activa cuando hay items en el carrito */
+.main-layout.with-cart {
+  grid-template-columns: minmax(0,1fr) 340px;
+}
+
 .main-layout section{
   max-width:100%;
   margin:0;
@@ -216,10 +223,12 @@ textarea{min-height:80px;resize:vertical}
 /* MOBILE TWEAKS */
 @media(max-width:1100px){
   .menu-grid{grid-template-columns:repeat(2, minmax(0, 1fr))}
-  .main-layout{grid-template-columns:minmax(0,1fr) 320px}
+  /* Modificado: Ajuste de columna con carrito en tablets */
+  .main-layout.with-cart{grid-template-columns:minmax(0,1fr) 320px}
 }
 @media(max-width:800px){
-  .main-layout{grid-template-columns:1fr}
+  /* Modificado: En móviles siempre 1 columna */
+  .main-layout, .main-layout.with-cart{grid-template-columns:1fr}
   #sideCart{position:static;margin-top:1rem}
   .menu-grid{grid-template-columns:1fr}
   #cartBtn{right:.8rem}
@@ -642,10 +651,13 @@ function renderCart(){
       </div>`;
   }
 
+  // Modificado: Lógica para agregar o quitar la clase al contenedor principal
   if(!Object.keys(cart).length && !Object.keys(cartRewards).length){
     $('#sideCart').style.display='none';
+    $('.main-layout').classList.remove('with-cart'); // Centra el menú
   }else{
     $('#sideCart').style.display='block';
+    $('.main-layout').classList.add('with-cart'); // Desplaza el menú para hacer espacio al carrito
   }
 
   $('#sub').textContent=fmt(sub);
@@ -1231,8 +1243,3 @@ buildScheduleOptions();
 </script>
 </body>
 </html>
-
-
-
-
-
