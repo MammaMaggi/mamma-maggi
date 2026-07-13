@@ -6,19 +6,13 @@
 <title>Mamma Maggi | Pedidos Online</title>
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-<!-- Firebase (compat) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
 <style>
-:root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a;--muted:#b9b9b9;--ok:#2ecc71;--warn:#f1c40f}
+:root{--bg:#111;--fg:#fff;--accent:#e63946;--card:#1a1a1a}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
 a{color:var(--accent);text-decoration:none}
 button{font-family:inherit;border:none;cursor:pointer}
 h1,h2,h3{font-family:'Staatliches',cursive;font-weight:400}
-small{color:var(--muted)}
 
 /* HEADER */
 header{
@@ -36,26 +30,7 @@ header h1{font-size:2.3rem;letter-spacing:2px}
   background:none;color:var(--fg);display:flex;align-items:center;justify-content:center
 }
 #cartBtn span{font-size:.8rem}
-#userInfo{font-size:.8rem;opacity:.9}
-
-/* BANNER HORARIO */
-#scheduleBanner{
-  width:100%;
-  background:var(--accent);
-  color:white;
-  text-align:center;
-  padding:8px 0;
-  font-weight:700;
-  font-size:.9rem;
-}
-#openBadge{
-  display:inline-flex;align-items:center;gap:.4rem;
-  margin-left:.6rem;padding:.15rem .5rem;border-radius:999px;
-  background:rgba(0,0,0,.25);font-weight:700
-}
-.dot{width:8px;height:8px;border-radius:50%}
-.dot.ok{background:var(--ok)}
-.dot.no{background:#ff6b6b}
+#userInfo{font-size:.8rem;opacity:.8}
 
 /* NAV */
 nav{
@@ -69,174 +44,147 @@ nav a{
 }
 nav a:hover{opacity:1;text-decoration:underline}
 
-/* CONTROLES MENÚ */
-.controls{
-  max-width:1200px;margin:0 auto 1rem;padding:0 1rem;
-  display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;align-items:center;
-}
-.controls input,.controls select{
-  padding:.65rem;border-radius:6px;border:1px solid #333;background:#222;color:var(--fg);
-  min-width:220px
-}
-.controls .pill{
-  padding:.55rem .8rem;border-radius:999px;border:1px solid #333;background:#1d1d1d;color:var(--fg);
-  display:flex;align-items:center;gap:.45rem;font-size:.9rem
-}
-
 /* LAYOUT PRINCIPAL: MENÚ + CARRITO LATERAL */
 .main-layout{
   max-width:1200px;
   margin:auto;
-  padding:1.2rem 1rem 2rem;
+  padding:1.5rem 1rem 2rem;
   display:grid;
-  /* Modificado: Por defecto ocupa el 100% (centrado) */
-  grid-template-columns: 1fr;
+  grid-template-columns:minmax(0,2fr) 320px;
   gap:1.5rem;
   align-items:flex-start;
-  transition: grid-template-columns 0.3s ease;
 }
-/* Modificado: Clase que se activa cuando hay items en el carrito */
-.main-layout.with-cart {
-  grid-template-columns: minmax(0,1fr) 340px;
-}
-
 .main-layout section{
   max-width:100%;
   margin:0;
   padding:0;
 }
-section h2{text-align:center;font-size:2rem;margin-bottom:1rem}
+section h2{text-align:center;font-size:2rem;margin-bottom:1.2rem}
 
-/* ✅ MENU GRID 3 HORIZONTALES */
+/* CARDS MENÚ */
 .menu-grid{
   display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
-  gap:1.2rem;
-  justify-items:stretch;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:1.5rem;
 }
 .card{
-  background:var(--card);border-radius:10px;
-  padding:1rem;display:flex;flex-direction:column;gap:.55rem;
-  width:100%;
-  box-shadow:0 6px 22px rgba(0,0,0,.25);
+  background:var(--card);border-radius:8px;
+  padding:1rem;display:flex;flex-direction:column;gap:.6rem;
 }
-.card .topline{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem}
-.badge{
-  font-size:.72rem;font-weight:800;
-  padding:.2rem .55rem;border-radius:999px;
-  background:rgba(230,57,70,.22);color:#ffd6d9;border:1px solid rgba(230,57,70,.35);
-  white-space:nowrap;
-}
-.desc{font-size:.92rem;opacity:.92}
-.price{font-weight:800}
+.price{font-weight:700}
 .card button{
-  margin-top:auto;padding:.65rem;border-radius:6px;
-  background:var(--accent);color:#fff;font-weight:800
+  margin-top:auto;padding:.6rem;border-radius:4px;
+  background:var(--accent);color:#fff;font-weight:700
 }
-.card button:active{transform:scale(.99)}
-hr.sep{border:none;border-top:1px solid #2a2a2a;margin:.2rem 0}
 
 /* CARRITO LATERAL */
 #sideCart{
   background:var(--card);
-  border-radius:10px;
+  border-radius:8px;
   padding:1rem;
   position:sticky;
   top:1rem;
-  display:none;
-  box-shadow:0 6px 22px rgba(0,0,0,.25);
+  display:none; /* oculto hasta que haya productos */
 }
-#sideCart h3{margin-bottom:.5rem;font-size:1.2rem}
+#sideCart h3{
+  margin-bottom:.6rem;
+  font-size:1.2rem;
+}
 #sideCartItems{
   font-size:.9rem;
-  display:flex;flex-direction:column;gap:.35rem;margin-bottom:.6rem
+  display:flex;
+  flex-direction:column;
+  gap:.35rem;
+  margin-bottom:.6rem;
 }
-.side-line{display:flex;justify-content:space-between;gap:.4rem}
-#sideTotal{text-align:right;font-weight:800;font-size:.95rem}
+.side-line{
+  display:flex;
+  justify-content:space-between;
+  gap:.4rem;
+}
+.side-empty{
+  opacity:.7;
+  font-size:.85rem;
+}
+#sideTotal{
+  text-align:right;
+  font-weight:700;
+  font-size:.95rem;
+}
 
 /* MODAL GENÉRICO */
 .modal{
   position:fixed;inset:0;background:rgba(0,0,0,.7);
   display:flex;align-items:center;justify-content:center;
-  opacity:0;visibility:hidden;transition:opacity .25s
+  opacity:0;visibility:hidden;transition:opacity .3s
 }
 .modal.active{opacity:1;visibility:visible}
 .box{
-  background:var(--card);border-radius:10px;
-  padding:1.3rem;width:92%;max-width:540px;
+  background:var(--card);border-radius:8px;
+  padding:1.4rem;width:90%;max-width:520px;
   max-height:90vh;overflow-y:auto;
   display:flex;flex-direction:column;gap:1rem
 }
-.close{align-self:flex-end;color:var(--fg);font-size:1.3rem;cursor:pointer;background:none}
-form{display:grid;gap:.9rem}
+.close{
+  align-self:flex-end;color:var(--fg);
+  font-size:1.3rem;cursor:pointer;background:none
+}
+form{display:grid;gap:1rem}
 input,select,textarea{
-  padding:.7rem;border-radius:6px;
+  padding:.7rem;border-radius:4px;
   border:1px solid #333;background:#222;color:var(--fg)
 }
-textarea{min-height:80px;resize:vertical}
+textarea{min-height:70px;resize:vertical}
 .btn{
-  padding:.85rem;border-radius:6px;background:var(--accent);color:#fff;font-weight:800
+  padding:.8rem;border-radius:4px;
+  background:var(--accent);color:#fff;font-weight:700
 }
-.btn:disabled{opacity:.55;cursor:not-allowed}
-.cart-item{display:flex;justify-content:space-between;align-items:center;gap:.4rem}
-.qty{display:flex;align-items:center;gap:.4rem}
+
+/* CARRITO EN MODAL */
+.cart-item{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:.4rem
+}
+.qty{
+  display:flex;align-items:center;gap:.4rem
+}
 .qty button{
-  width:28px;height:28px;border:1px solid var(--fg);
+  width:24px;height:24px;border:1px solid var(--fg);
   background:none;color:var(--fg);
-  border-radius:6px;font-weight:900
+  border-radius:4px;font-weight:700
 }
-.summary{text-align:right;font-size:1.05rem;font-weight:900}
-#map{height:220px;border-radius:8px;margin-top:.5rem;display:none}
+.summary{text-align:right;font-size:1.05rem;font-weight:700}
+#map{height:220px;border-radius:6px;margin-top:.5rem;display:none}
 
 /* SECCIONES EXTRA */
-.static-section{max-width:960px;margin:0 auto 2rem;padding:0 1rem 2rem}
-.static-section h2{text-align:center;font-size:1.9rem;margin-bottom:1rem}
-.static-section p{margin-bottom:.6rem;font-size:.95rem;opacity:.92}
-
-/* RECOMPENSAS PUNTOS */
-.reward-item{
-  display:flex;justify-content:space-between;align-items:center;
-  gap:.6rem;font-size:.9rem;margin-top:.35rem
+.static-section{
+  max-width:960px;
+  margin:0 auto 2rem;
+  padding:0 1rem 2rem;
 }
-.reward-item button{padding:.3rem .55rem;font-size:.82rem;border-radius:6px}
-
-/* ADMIN PANEL */
-#adminContent{margin-top:1rem}
-.admin-order{
-  border:1px solid #333;border-radius:8px;padding:.7rem .9rem;margin-bottom:.7rem;
-  font-size:.86rem;background:#171717
+.static-section h2{
+  text-align:center;
+  font-size:1.9rem;
+  margin-bottom:1rem;
 }
-.admin-order-header{display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.35rem;font-weight:900}
-.admin-order-body{opacity:.92}
-.admin-order-body ul{margin: .35rem 0 0 1.2rem}
-
-/* TOAST */
-#toast{
-  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
-  background:#1d1d1d;border:1px solid #333;border-radius:999px;
-  padding:.65rem 1rem;color:var(--fg);font-weight:800;font-size:.92rem;
-  opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
-  box-shadow:0 10px 30px rgba(0,0,0,.35)
+.static-section p{
+  margin-bottom:.6rem;
+  font-size:.95rem;
+  opacity:.9;
 }
-#toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
-/* MOBILE TWEAKS */
-@media(max-width:1100px){
-  .menu-grid{grid-template-columns:repeat(2, minmax(0, 1fr))}
-  /* Modificado: Ajuste de columna con carrito en tablets */
-  .main-layout.with-cart{grid-template-columns:minmax(0,1fr) 320px}
-}
+/* RESPONSIVE */
 @media(max-width:800px){
-  /* Modificado: En móviles siempre 1 columna */
-  .main-layout, .main-layout.with-cart{grid-template-columns:1fr}
-  #sideCart{position:static;margin-top:1rem}
-  .menu-grid{grid-template-columns:1fr}
-  #cartBtn{right:.8rem}
-  #loginBtn{left:.8rem}
+  .main-layout{
+    grid-template-columns:1fr;
+  }
+  #sideCart{
+    position:static;
+    margin-top:1rem;
+  }
 }
 </style>
 </head>
-
 <body>
 <header>
   <button id="loginBtn" title="Ingresar / Registrarse">👤 Ingresar / Registrar</button>
@@ -245,34 +193,13 @@ textarea{min-height:80px;resize:vertical}
   <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
 </header>
 
-<div id="scheduleBanner">
-  🕒 Horario: Mié–Sáb 18:00–23:00 • Dom 12:00–16:00
-  <span id="openBadge"><span class="dot ok" id="openDot"></span><span id="openText">Abierto</span></span>
-</div>
-
 <nav>
   <a href="#top">Pedidos</a>
   <a href="#nosotros">Nosotros</a>
   <a href="#club">Club Maggi</a>
   <a href="#eventos">Eventos</a>
   <a href="#contacto">Contacto</a>
-  <a href="#admin">Admin</a>
 </nav>
-
-<div class="controls">
-  <span class="pill">🔎 <input id="search" placeholder="Buscar (ej: pepperoni, pesto…)" style="border:none;background:transparent;outline:none;color:var(--fg);min-width:180px" /></span>
-  <select id="cat">
-    <option value="all">Todas las categorías</option>
-    <option value="pizza">Pizzas</option>
-    <option value="extra">Extras / Postres</option>
-  </select>
-  <select id="sort">
-    <option value="default">Orden original</option>
-    <option value="priceAsc">Precio: menor a mayor</option>
-    <option value="priceDesc">Precio: mayor a menor</option>
-    <option value="nameAsc">Nombre: A → Z</option>
-  </select>
-</div>
 
 <a id="top"></a>
 <div class="main-layout">
@@ -288,9 +215,6 @@ textarea{min-height:80px;resize:vertical}
     <button class="btn" id="openCartFromSide" style="width:100%;margin-top:.5rem">
       Ver detalle y finalizar
     </button>
-    <small style="display:block;margin-top:.55rem;opacity:.9;">
-      ⏱️ Tiempo mínimo: <strong>25 min</strong> • Programación: <strong>cada 15 min</strong>
-    </small>
   </aside>
 </div>
 
@@ -304,8 +228,9 @@ textarea{min-height:80px;resize:vertical}
 <!-- SECCIÓN CLUB MAGGI -->
 <section id="club" class="static-section">
   <h2>Club Maggi</h2>
-  <p>Por cada compra acumulas puntos en tu cuenta. Luego, puedes canjearlos por productos especiales del menú.</p>
-  <p>Ejemplo: Tiramisú o Palitos de Ajo / Queso, según los puntos que tengas acumulados.</p>
+  <p>Por cada compra acumulas puntos en tu cuenta. Luego, puedes canjearlos como descuento en tus próximos pedidos.</p>
+  <p><strong>Regla simple:</strong> 1 punto = $100 de descuento.</p>
+  <p>Los puntos se aplican al finalizar tu pedido, una vez que se haya confirmado la compra anterior.</p>
 </section>
 
 <!-- SECCIÓN EVENTOS -->
@@ -319,26 +244,9 @@ textarea{min-height:80px;resize:vertical}
 <section id="contacto" class="static-section">
   <h2>Contacto</h2>
   <p>📍 Sector Lérida con Javiera Carrera, Temuco.</p>
-  <p>⏰ Horario: Miércoles a Sábado 18:00–23:00 y Domingo 12:00–16:00 hrs.</p>
+  <p>⏰ Miércoles a sábado, de 18:00 a 22:00 hrs.</p>
   <p>📱 WhatsApp: <a href="https://wa.me/56949486579" target="_blank">+56 9 4948 6579</a></p>
   <p>📸 Instagram: <a href="https://www.instagram.com/mamma.maggi" target="_blank">@mamma.maggi</a></p>
-</section>
-
-<!-- PANEL ADMIN -->
-<section id="admin" class="static-section">
-  <h2>Panel Admin</h2>
-  <p style="font-size:.9rem;opacity:.85;">Ingresa la clave de administrador para ver el flujo de pedidos guardados en Firestore.</p>
-  <div id="adminLogin">
-    <input type="password" id="adminPass" placeholder="Clave admin" />
-    <button class="btn" id="adminEnter" style="margin-top:.4rem;">Entrar</button>
-  </div>
-  <div id="adminContent" style="display:none">
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-      <button class="btn" id="refreshOrders">Actualizar pedidos</button>
-      <small>Tip: esto solo lee los últimos 60 pedidos.</small>
-    </div>
-    <div id="ordersList" style="margin-top:.8rem;"></div>
-  </div>
 </section>
 
 <!-- Auth Modal -->
@@ -348,31 +256,29 @@ textarea{min-height:80px;resize:vertical}
   <form id="authForm">
     <input type="email" id="email" placeholder="Correo" required />
     <input type="password" id="pass" placeholder="Contraseña" required />
+    <!-- Confirmar contraseña SOLO para registro -->
     <input type="password" id="pass2" placeholder="Confirmar contraseña" style="display:none" />
 
     <div id="extra" style="display:none">
       <input id="name" placeholder="Nombre" required />
       <input id="last" placeholder="Apellido" required />
-      <input
-        id="phone"
-        placeholder="Teléfono (+569... o 9xxxxxxxx)"
-        required
-        inputmode="tel"
-        pattern="^[+0-9 ()-]{8,20}$"
-        title="Ej: +56964400283 o 964400283"
+      <input 
+        id="phone" 
+        placeholder="Teléfono (+569...)" 
+        required 
+        pattern="^(\+?56)?9\\d{8}$"
+        title="Debe ser un número chileno, por ejemplo +56912345678" 
       />
-      <input id="addr" placeholder="Dirección (Temuco) (solo referencia)" required />
-      <button type="button" class="btn" id="geoBtn">Confirmar dirección (referencia)</button>
+      <input id="addr" placeholder="Dirección (Temuco)" required />
+      <button type="button" class="btn" id="geoBtn">Confirmar dirección</button>
       <p id="distText" style="text-align:center"></p>
       <div id="map"></div>
-      <small>Esta dirección es solo de referencia. El cobro de delivery se calcula en el carrito.</small>
     </div>
 
-    <button class="btn" id="authSubmit" type="submit">Entrar</button>
-    <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.2rem">
+    <button class="btn" id="authSubmit">Entrar</button>
+    <p id="toggleAuth" style="text-align:center;cursor:pointer;margin-top:.5px">
       ¿No tienes cuenta? Regístrate
     </p>
-    <small id="authMsg" style="text-align:center;display:block;min-height:1.1rem;"></small>
   </form>
 </div></div>
 
@@ -387,237 +293,236 @@ textarea{min-height:80px;resize:vertical}
     <label style="margin-left:.7rem;"><input type="radio" name="delType" value="delivery"/> Delivery</label>
   </div>
 
-  <div id="deliveryDetails" style="display:none;margin-top:.4rem">
-    <input id="delAddr" placeholder="Dirección de entrega (Temuco)" />
-    <button type="button" class="btn" id="delGeoBtn" style="margin-top:.4rem">Confirmar dirección delivery</button>
-    <p id="delDistText" style="font-size:.85rem;text-align:center;margin-top:.25rem"></p>
-    <small>El cobro es por distancia: <strong>$1000 por km</strong> (redondeado hacia arriba).</small>
-  </div>
-
-  <div style="margin-top:.7rem">
-    <label><strong>¿Para cuándo?</strong></label><br/>
-    <label><input type="radio" name="whenType" value="now" checked> Lo antes posible (hoy)</label>
-    <label style="margin-left:.7rem;"><input type="radio" name="whenType" value="later"> Programar</label>
-
-    <div id="scheduleFields" style="display:none;margin-top:.4rem;gap:.5rem;flex-wrap:wrap;display:flex;">
-      <select id="schedDate" style="flex:1;min-width:180px"></select>
-      <select id="schedTime" style="flex:1;min-width:180px"></select>
-    </div>
-    <small id="scheduleHint" style="font-size:.8rem;opacity:.85;"></small>
-  </div>
-
-  <div style="margin-top:.7rem">
-    <label>Código de descuento</label>
+  <div style="margin-top:.5rem">
+    <label>Código</label>
     <div style="display:flex;gap:.4rem;margin-top:.3rem">
-      <input id="coupon" style="flex:1" placeholder="Ej: MAGGI10" />
-      <button class="btn" id="couponBtn" style="padding:.55rem .85rem" type="button">Aplicar</button>
+      <input id="coupon" style="flex:1"/>
+      <button class="btn" id="couponBtn" style="padding:.5rem .8rem">Aplicar</button>
     </div>
     <small id="couponMsg"></small>
   </div>
 
-  <div id="ptsBox" style="display:none;margin-top:.7rem">
-    <p>Tienes <span id="pts">0</span> puntos Club Maggi.</p>
-    <div id="rewardsList"></div>
+  <div id="ptsBox" style="display:none">
+    <p>Puntos: <span id="pts">0</span></p>
+    <label><input type="checkbox" id="redeem"/> Usar pts</label>
   </div>
 
-  <div style="margin-top:.7rem">
-    <label for="orderComment">Comentario (opcional)</label>
-    <textarea id="orderComment" placeholder="Ej: sin cebolla, tocar timbre, etc."></textarea>
+  <!-- Comentario antes de finalizar -->
+  <div>
+    <label for="orderComment">Comentario para tu pedido (opcional)</label>
+    <textarea id="orderComment" placeholder="Ej: sin cebolla, tocar timbre, dejar en conserjería, etc."></textarea>
   </div>
 
   <p class="summary">Subtotal: $<span id="sub">0</span></p>
   <p class="summary" id="delRow" style="display:none">Delivery (<span id="km">0</span> km): $<span id="del">0</span></p>
   <p class="summary" id="discRow" style="display:none">Descuento: –$<span id="disc">0</span></p>
+  <p class="summary" id="redRow" style="display:none">Puntos: –$<span id="red">0</span></p>
   <p class="summary">Total: $<span id="tot">0</span></p>
-
-  <a class="btn" id="checkout" href="#" style="text-align:center;">Finalizar por WhatsApp</a>
-  <small style="text-align:center;display:block;opacity:.85;">Al finalizar se guardará el pedido y se abrirá WhatsApp con el mensaje listo.</small>
+  <a class="btn" id="checkout" href="#">Finalizar por WhatsApp</a>
 </div></div>
-
-<div id="toast">Agregado al carrito ✅</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===========================
-   FIREBASE INIT (FIRESTORE)
-=========================== */
-const firebaseConfig = {
-  apiKey: "AIzaSyCd8jNdpZjHJkX-Ft0I6RplS-46vfjbYeU",
-  authDomain: "mamma-maggi.firebaseapp.com",
-  projectId: "mamma-maggi",
-  storageBucket: "mamma-maggi.firebasestorage.app",
-  messagingSenderId: "148248596670",
-  appId: "1:148248596670:web:91dc5b239ce6b9a9130eef",
-  measurementId: "G-L8ZT1KN1YC"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-/* ===========================
-   DATOS
-=========================== */
 const MENU=[
-  {id:1,name:'Margarita',desc:'Salsa de tomate, mozzarella, albahaca y parmesano.',price:9990,cat:'pizza',badge:'Clásica'},
-  {id:2,name:'Pepperoni',desc:'Salsa tomate, mozzarella, pepperoni.',price:10500,cat:'pizza',badge:'Top'},
-  {id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990,cat:'pizza'},
-  {id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500,cat:'pizza'},
-  {id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500,cat:'pizza'},
-  {id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, champiñones, cebolla morada y pimentón.',price:11990,cat:'pizza'},
-  {id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990,cat:'pizza',badge:'Nueva'},
-  {id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500,cat:'pizza'},
-  {id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500,cat:'pizza'},
-  {id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990,cat:'pizza',badge:'Premium'},
-  {id:11,name:'Bernarda',desc:'Queso azul, nueces, miel, ricotta y albahaca.',price:10990,cat:'pizza'},
-  {id:12,name:'Bacon No Bacon',desc:'Proteína de soja sabor tocino y cebolla.',price:10990,cat:'pizza'},
-  {id:13,name:'Mare Verde',desc:'Salmón ahumado, rúcula y parmesano.',price:10990,cat:'pizza'},
-  {id:14,name:'Gamberetti',desc:'Camarones al ajo, perejil y limón.',price:10990,cat:'pizza'},
-  {id:15,name:'Sweet Cherry',desc:'Tomates cherry confitados, aceitunas y albahaca.',price:10990,cat:'pizza'},
-  {id:16,name:'Tiramisú',desc:'Postre clásico italiano.',price:4990,cat:'extra',badge:'Postre'},
-  {id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500,cat:'extra'},
-  {id:18,name:'Palitos de queso',desc:'Palitos con mozzarella y orégano.',price:4990,cat:'extra'}
+  {id:1,name:'Margarita',desc:'Un clásico de las pizzas, una combi simple pero perfecta, salsa de tomate, mozzarella, albahaca y parmesano.',price:9990},
+  {id:2,name:'Pepperoni',desc:'Otro clásico infaltable, salsa tomate, mozzarella, pepperoni.',price:10500},
+  {id:3,name:'Not Fugazza',desc:'Salsa de tomate, mozzarella, aceitunas y cebolla.',price:10990},
+  {id:4,name:'Napolitana',desc:'Salsa de tomate, mozzarella, jamón, tomate cherry y orégano.',price:11500},
+  {id:5,name:'Hawaiana',desc:'Salsa de tomate, mozzarella, jamón y piña.',price:11500},
+  {id:6,name:'Vegetariana',desc:'Salsa de tomate, mozzarella, aceitunas, chapiñones, cebolla morada y pimentón.',price:11990},
+  {id:7,name:'Pesto Cherry',desc:'Salsa de tomate, mozzarella, tomate cherry y pesto.',price:11990},
+  {id:8,name:'Pollo BBQ',desc:'Salsa BBQ, mozzarella, pollo, tocino, cebolla morada.',price:12500},
+  {id:9,name:'Capi',desc:'Salsa de tomate, mozzarella, pera y queso azul.',price:12500},
+  {id:10,name:'Pitu',desc:'Salsa de tomate, mozzarella, jamón serrano, rúcula y parmesano.',price:12990},
+  {id:11,name:'Bernarda',desc:'Salsa de tomate, mozzarella, queso azul, nueces, miel, ricotta y albahaca.',price:10990},
+  {id:12,name:'Bacon No Bacon',desc:'Salsa de tomate, mozzarella, proteina de soja sabor tocino y cebolla.',price:10990},
+  {id:13,name:'Mare Verde',desc:'Salsa de tomate, mozzarella, salmón ahumado, rúcula y parmesano.',price:10990},
+  {id:14,name:'Gamberetti',desc:'Salsa de tomate, mozzarella, camarones salteados en mantequilla de ajo, perejil y limón.',price:10990},
+  {id:15,name:'Sweet Cherry',desc:'Salsa de tomate, mozzarella, tomates cherry confitados, aceitunas y albahaca.',price:10990},
+  {id:16,name:'Tiramisú',desc:'',price:4990},
+  {id:17,name:'Palitos de ajo',desc:'Palitos con salsa de ajo y parmesano.',price:4500},
+  {id:18,name:'Palitos de queso',desc:'Palitos de queso con mozzarella y orégano.',price:4990}
 ];
 
 const ORIGIN=[-38.731229, -72.626507];
+const CODE={MAGGI10:.1};
 const PHONE='56949486579';
-const RATE=.001;                 // puntos: ~1 por $1000
+const RATE=.001,VAL=100;
 const FEE=km=>Math.ceil(km)*1000; // 1 km = $1000
-const $=q=>document.querySelector(q);
-const fmt=n=>Number(n||0).toLocaleString('es-CL');
+const $=q=>document.querySelector(q),fmt=n=>n.toLocaleString('es-CL');
 
-/* Descuentos (ejemplos) */
-const CODE={
-  MAGGI10:0.10,       // 10%
-  PIZZA5:0.05,        // 5%
-  PRIMERA8:0.08,      // 8%
-  CLUB12:0.12         // 12%
+/* Storage */
+const users=JSON.parse(localStorage.getItem('users')||'{}');
+function saveUsers(){localStorage.setItem('users',JSON.stringify(users));}
+/* Points release check */
+function releasePoints(u){
+  if(u.pending&&Date.now()-u.pendingAt>=300000){
+    u.points=(u.points||0)+u.pending;
+    u.pending=0;
+    saveUsers();
+  }
+}
+
+/* State */
+let user=null,cart={},delType='pickup',code=null,redeem=false;
+
+/* Render menú */
+MENU.forEach(i=>{
+  const c=document.createElement('div');
+  c.className='card';
+  c.innerHTML=`
+    <h3>${i.name}</h3>
+    <p>${i.desc}</p>
+    <span class='price'>$${fmt(i.price)}</span>
+    <button class='btn' data-id='${i.id}'>Agregar</button>`;
+  $('#menuGrid').appendChild(c);
+});
+
+/* Agregar al carrito */
+$('#menuGrid').onclick=e=>{
+  if(e.target.dataset.id){
+    const id=+e.target.dataset.id;
+    cart[id]=(cart[id]||0)+1;
+    updateCount();
+    renderCart(); // actualiza modal + carrito lateral
+  }
 };
 
-/* Recompensas con puntos */
-const REWARDS=[
-  {id:16,pts:10,label:'Canjear Tiramisú (10 pts)'},
-  {id:17,pts:8,label:'Canjear Palitos de Ajo (8 pts)'},
-  {id:18,pts:8,label:'Canjear Palitos de Queso (8 pts)'}
-];
-
-/* Admin */
-const ADMIN_PASS = "mamma2025";
-
-/* ===========================
-   ESTADO
-=========================== */
-let user=null;
-let cart={};
-let cartRewards={};
-let delType='pickup';
-let code=null;
-let whenType='now';
-let orderDelivery=null; // {address,km,fee,lat,lng}
-
-/* ===========================
-   UTIL
-=========================== */
-function toast(msg){
-  const t=$('#toast');
-  t.textContent=msg;
-  t.classList.add('show');
-  clearTimeout(window.__t);
-  window.__t=setTimeout(()=>t.classList.remove('show'),1200);
+function updateCount(){
+  $('#cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);
 }
-function normalizePhone(phone){ return String(phone||'').replace(/\D/g,''); }
 
+/* Auth modal */
+const authM=$('#authModal');
+$('#loginBtn').onclick=()=>authM.classList.add('active');
+$('#closeAuth').onclick=()=>authM.classList.remove('active');
+
+let loginMode=true;
+$('#toggleAuth').onclick=()=>{
+  loginMode=!loginMode;
+  $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
+  $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
+  $('#extra').style.display=loginMode?'none':'block';
+  $('#pass2').style.display=loginMode?'none':'block';
+};
+
+/* Geocode */
 function toRad(d){return d*Math.PI/180;}
-function dist(a,b,c,d){
+const dist=(a,b,c,d)=>{
   const R=6371;
   const dLat=toRad(c-a),dLon=toRad(d-b);
   const s=Math.sin(dLat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
-}
+};
 
-/* Horario: Mié–Sáb 18-23, Dom 12-16 */
-function isInSchedule(dateObj){
-  const day=dateObj.getDay(); // 0=domingo
-  const hour=dateObj.getHours();
-  const min=dateObj.getMinutes();
-  if(day===0) return hour>=12 && (hour<16 || (hour===16 && min===0));
-  if(day>=3 && day<=6) return hour>=18 && (hour<23 || (hour===23 && min===0));
-  return false;
-}
-function isOpenNow(){ return isInSchedule(new Date()); }
-function updateOpenBadge(){
-  const open=isOpenNow();
-  $('#openDot').className='dot '+(open?'ok':'no');
-  $('#openText').textContent=open?'Abierto':'Cerrado';
-}
+$('#geoBtn').onclick=async()=>{
+  const addr=$('#addr').value.trim();
+  if(!addr)return alert('Ingresa dirección');
+  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
+  if(!d[0])return alert('No encontrada');
+  const {lat,lon}=d[0];
+  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
+  const fee=FEE(km);
+  $('#distText').textContent=`${km} km • $${fmt(fee)}`;
+  $('#map').style.display='block';
+  if(!window._map){
+    _map=L.map('map').setView([lat,lon],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
+  }
+  _map.setView([lat,lon],13);
+  if(window._mk)_map.removeLayer(_mk);
+  _mk=L.marker([lat,lon]).addTo(_map);
+  if (!user) user = {};
+  Object.assign(user, { lat: +lat, lng: +lon, km, fee, address: addr });
+};
 
-/* ===========================
-   RENDER MENU (con filtros)
-=========================== */
-function getFilteredMenu(){
-  const q=($('#search').value||'').trim().toLowerCase();
-  const cat=$('#cat').value;
-  const sort=$('#sort').value;
+/* Login / Registro mejorado */
+$('#authForm').onsubmit=e=>{
+  e.preventDefault();
+  const email=$('#email').value.trim().toLowerCase();
+  const pass=$('#pass').value;
+  const pass2=$('#pass2').value;
 
-  let arr=[...MENU];
-
-  if(cat!=='all') arr=arr.filter(x=>x.cat===cat);
-  if(q) arr=arr.filter(x=>(x.name+' '+x.desc).toLowerCase().includes(q));
-
-  if(sort==='priceAsc') arr.sort((a,b)=>a.price-b.price);
-  if(sort==='priceDesc') arr.sort((a,b)=>b.price-a.price);
-  if(sort==='nameAsc') arr.sort((a,b)=>a.name.localeCompare(b.name,'es'));
-
-  return arr;
-}
-
-function renderMenu(){
-  const grid=$('#menuGrid');
-  grid.innerHTML='';
-  const items=getFilteredMenu();
-
-  if(!items.length){
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:.85;padding:1rem;">
-      No encontramos productos con ese filtro.
-    </div>`;
-    return;
+  if(loginMode){
+    // LOGIN
+    if(!users[email]||users[email].pass!==pass){
+      alert('Credenciales inválidas');
+      return;
+    }
+    user={...users[email]};
+    releasePoints(user);
+  }else{
+    // REGISTRO
+    if(pass!==pass2){
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+    if(!user||!user.km){
+      alert('Confirma tu dirección antes de registrarte.');
+      return;
+    }
+    user={
+      ...user,
+      email,
+      pass,
+      nombre:$('#name').value.trim(),
+      apellido:$('#last').value.trim(),
+      phone:$('#phone').value.trim(),
+      points:0,
+      pending:0
+    };
+    users[email]=user;
+    saveUsers();
   }
 
-  items.forEach(i=>{
-    const c=document.createElement('div');
-    c.className='card';
-    c.innerHTML=`
-      <div class="topline">
-        <h3>${i.name}</h3>
-        ${i.badge?`<span class="badge">${i.badge}</span>`:''}
-      </div>
-      <p class="desc">${i.desc||''}</p>
-      <hr class="sep"/>
-      <span class="price">$${fmt(i.price)}</span>
-      <button class="btn" data-id="${i.id}">Agregar</button>
-    `;
-    grid.appendChild(c);
-  });
-}
+  $('#userInfo').textContent=`Hola, ${user.nombre} (${user.points} pts)`;
+  $('#pts').textContent=user.points;
+  $('#ptsBox').style.display=user.points?'block':'none';
+  authM.classList.remove('active');
+  if($('#cartModal').classList.contains('wait-login')){
+    $('#cartModal').classList.remove('wait-login');
+    calc();
+    $('#cartModal').classList.add('active');
+  }
+};
 
-$('#search').addEventListener('input',renderMenu);
-$('#cat').addEventListener('change',renderMenu);
-$('#sort').addEventListener('change',renderMenu);
+/* Cart modal */
+$('#cartBtn').onclick=()=>{
+  renderCart();
+  $('#cartModal').classList.add('active');
+};
+$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
 
-/* ===========================
-   CARRITO
-=========================== */
-function updateCount(){
-  const cnt = Object.values(cart).reduce((a,b)=>a+b,0) + Object.values(cartRewards).reduce((a,b)=>a+b,0);
-  $('#cartCount').textContent=cnt;
-}
+/* botón lateral "ver detalle" */
+$('#openCartFromSide').onclick=()=>{
+  renderCart();
+  $('#cartModal').classList.add('active');
+};
+
+/* Cambios en cantidades dentro del modal */
+$('#cartItems').onclick=e=>{
+  if(e.target.closest('.qty')){
+    const id=+e.target.closest('.qty').dataset.id;
+    if(e.target.classList.contains('inc'))cart[id]++;
+    if(e.target.classList.contains('dec'))cart[id]=Math.max(0,cart[id]-1);
+    if(!cart[id])delete cart[id];
+    updateCount();
+    renderCart();
+  }
+};
+
 function renderCart(){
-  const w=$('#cartItems');
-  const s=$('#sideCartItems');
-  w.innerHTML=''; s.innerHTML='';
+  const w=$('#cartItems');       // contenido modal
+  const s=$('#sideCartItems');   // carrito lateral
+  w.innerHTML='';
+  s.innerHTML='';
 
   let sub=0;
-
   for(const id in cart){
-    const it=MENU.find(m=>m.id==id), q=cart[id];
+    const it=MENU.find(m=>m.id==id),
+          q = cart[id];
+
+    // línea en modal
     w.innerHTML+=`
       <div class='cart-item'>
         <span>${it.name}</span>
@@ -628,618 +533,113 @@ function renderCart(){
         </div>
         <span>$${fmt(it.price*q)}</span>
       </div>`;
+
+    // línea en carrito lateral
     s.innerHTML+=`
       <div class="side-line">
         <span>${q} x ${it.name}</span>
         <span>$${fmt(it.price*q)}</span>
       </div>`;
+
     sub+=it.price*q;
   }
 
-  for(const rid in cartRewards){
-    const it=MENU.find(m=>m.id==rid), q=cartRewards[rid];
-    w.innerHTML+=`
-      <div class='cart-item'>
-        <span>${it.name} (canje)</span>
-        <span>${q} x</span>
-        <span>$0</span>
-      </div>`;
-    s.innerHTML+=`
-      <div class="side-line">
-        <span>${q} x ${it.name} (canje)</span>
-        <span>$0</span>
-      </div>`;
-  }
-
-  // Modificado: Lógica para agregar o quitar la clase al contenedor principal
-  if(!Object.keys(cart).length && !Object.keys(cartRewards).length){
+  if(!Object.keys(cart).length){
+    // carrito vacío: se oculta lateral
+    s.innerHTML='';
     $('#sideCart').style.display='none';
-    $('.main-layout').classList.remove('with-cart'); // Centra el menú
   }else{
     $('#sideCart').style.display='block';
-    $('.main-layout').classList.add('with-cart'); // Desplaza el menú para hacer espacio al carrito
   }
 
   $('#sub').textContent=fmt(sub);
   $('#sideTotal').textContent='Subtotal: $'+fmt(sub);
-
   calc();
 }
 
-/* Add to cart click */
-$('#menuGrid').addEventListener('click', (e)=>{
-  const btn=e.target.closest('button[data-id]');
-  if(!btn) return;
-  const id=+btn.dataset.id;
-  cart[id]=(cart[id]||0)+1;
-  updateCount();
-  renderCart();
-  toast('Agregado al carrito ✅');
-});
-
-/* Cart modal open/close */
-$('#cartBtn').onclick=()=>{ renderCart(); $('#cartModal').classList.add('active'); };
-$('#openCartFromSide').onclick=()=>{ renderCart(); $('#cartModal').classList.add('active'); };
-$('#closeCart').onclick=()=>$('#cartModal').classList.remove('active');
-
-/* qty changes */
-$('#cartItems').onclick=e=>{
-  const qwrap=e.target.closest('.qty');
-  if(!qwrap) return;
-  const id=+qwrap.dataset.id;
-  if(e.target.classList.contains('inc')) cart[id]++;
-  if(e.target.classList.contains('dec')) cart[id]=Math.max(0,cart[id]-1);
-  if(!cart[id]) delete cart[id];
-  updateCount();
-  renderCart();
-};
-
-/* ===========================
-   DELIVERY
-=========================== */
+/* Delivery / cupones / puntos */
 document.querySelectorAll('input[name="delType"]').forEach(r=>r.onchange=e=>{
   delType=e.target.value;
-  if(delType==='delivery'){
-    $('#deliveryDetails').style.display='block';
-  }else{
-    $('#deliveryDetails').style.display='none';
-    $('#delRow').style.display='none';
-    orderDelivery=null;
-    $('#delDistText').textContent='';
-  }
   calc();
 });
-
-$('#delGeoBtn').onclick=async()=>{
-  const addr=$('#delAddr').value.trim();
-  if(!addr) return alert('Ingresa dirección de entrega');
-  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
-  if(!d[0]) return alert('No encontrada');
-  const {lat,lon}=d[0];
-  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
-  const fee=FEE(km);
-  orderDelivery={address:addr,lat:+lat,lng:+lon,km,fee};
-  $('#delDistText').textContent=`Delivery a ${km} km • Costo: $${fmt(fee)}`;
-  calc();
-};
-
-/* ===========================
-   CUPÓN
-=========================== */
-$('#couponBtn').onclick=()=>{
-  const c=($('#coupon').value||'').trim().toUpperCase();
-  code = CODE[c] ? c : null;
-  $('#couponMsg').textContent = code ? `Aplicado ✓ (${Math.round(CODE[code]*100)}%)` : 'Inválido';
-  calc();
-};
-
-/* ===========================
-   PROGRAMAR (cada 15 min)
-=========================== */
-document.querySelectorAll('input[name="whenType"]').forEach(r=>r.onchange=e=>{
-  whenType=e.target.value;
-  if(whenType==='later'){
-    $('#scheduleFields').style.display='flex';
-    buildScheduleOptions();
-  }else{
-    $('#scheduleFields').style.display='none';
-    $('#scheduleHint').textContent='';
-  }
-});
-
-function getOpenWindowsForDay(dayIdx){
-  if(dayIdx===0) return [{start:12,end:16}];
-  if(dayIdx>=3 && dayIdx<=6) return [{start:18,end:23}];
-  return [];
-}
-
-function buildScheduleOptions(){
-  const dateSel=$('#schedDate');
-  const timeSel=$('#schedTime');
-  dateSel.innerHTML=''; timeSel.innerHTML='';
-
-  const now=new Date();
-  for(let i=0;i<7;i++){
-    const d=new Date();
-    d.setDate(now.getDate()+i);
-    const win=getOpenWindowsForDay(d.getDay());
-    if(!win.length) continue;
-
-    const yyyy=d.getFullYear();
-    const mm=String(d.getMonth()+1).padStart(2,'0');
-    const dd=String(d.getDate()).padStart(2,'0');
-    const value=`${yyyy}-${mm}-${dd}`;
-    const label=d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric', month:'short'});
-    const opt=document.createElement('option');
-    opt.value=value; opt.textContent=label;
-    dateSel.appendChild(opt);
-  }
-
-  if(!dateSel.options.length){
-    dateSel.innerHTML='<option value="">Sin días disponibles</option>';
-    timeSel.innerHTML='<option value="">Sin horarios</option>';
-    $('#scheduleHint').textContent='No hay días disponibles para programar.';
-    return;
-  }
-
-  dateSel.onchange=rebuildTimeOptions;
-  rebuildTimeOptions();
-}
-
-function rebuildTimeOptions(){
-  const dateSel=$('#schedDate');
-  const timeSel=$('#schedTime');
-  timeSel.innerHTML='';
-  const val=dateSel.value;
-  if(!val){
-    timeSel.innerHTML='<option value="">Selecciona fecha</option>';
-    return;
-  }
-
-  const [y,m,d]=val.split('-').map(Number);
-  const base=new Date(y,m-1,d);
-  const windows=getOpenWindowsForDay(base.getDay());
-  if(!windows.length){
-    timeSel.innerHTML='<option value="">Sin horarios</option>';
-    return;
-  }
-
-  const now=new Date();
-  const minWaitMs=25*60*1000;
-  const minDate=new Date(now.getTime()+minWaitMs);
-
-  windows.forEach(win=>{
-    for(let h=win.start; h<win.end; h++){
-      for(let min=0; min<60; min+=15){
-        const slot=new Date(y,m-1,d,h,min,0);
-        const v=`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
-        const opt=document.createElement('option');
-        opt.value=v;
-        opt.textContent=v;
-
-        // deshabilitar si es hoy y menor que 25 min
-        if(slot.toDateString()===now.toDateString() && slot<minDate){
-          opt.disabled=true;
-          opt.textContent=v+' (no disponible)';
-        }
-        timeSel.appendChild(opt);
-      }
-    }
-  });
-
-  const firstEnabled=[...timeSel.options].find(o=>!o.disabled && o.value);
-  if(firstEnabled) timeSel.value=firstEnabled.value;
-
-  $('#scheduleHint').textContent='Programación disponible solo dentro del horario. Mínimo 25 min. Intervalos de 15 min.';
-}
-
-/* ===========================
-   REWARDS (PUNTOS)
-=========================== */
-function renderRewards(){
-  const box=$('#rewardsList');
-  box.innerHTML='';
-  if(!user) return;
-  REWARDS.forEach(r=>{
-    const it=MENU.find(m=>m.id===r.id);
-    if(!it) return;
-    const can=(user.points||0) >= r.pts;
-    box.innerHTML += `
-      <div class="reward-item">
-        <span>${r.label}</span>
-        <button class="btn" data-rid="${r.id}" ${can?'':'disabled'}>${can?'Canjear':'No alcanza'}</button>
-      </div>`;
-  });
-}
-
-$('#rewardsList').onclick=async(e)=>{
-  const btn=e.target.closest('button[data-rid]');
-  if(!btn || !user) return;
-  const rid=+btn.dataset.rid;
-  const reward=REWARDS.find(r=>r.id===rid);
-  if(!reward) return;
-  if((user.points||0) < reward.pts) return;
-
-  user.points=(user.points||0)-reward.pts;
-
-  // Guardar puntos en Firestore users
-  try{
-    await db.collection('users').doc(user.email).set(user,{merge:true});
-  }catch(err){
-    console.warn('No se pudo guardar puntos en Firestore (revisa hosting http/https):',err);
-  }
-
-  cartRewards[rid]=(cartRewards[rid]||0)+1;
-  updateUserUI();
-  updateCount();
-  renderCart();
-  toast('Canje aplicado ✅');
-};
-
-/* ===========================
-   AUTH (registro/login con Firestore)
-=========================== */
-const authM=$('#authModal');
-const authForm=$('#authForm');
-let loginMode=true;
-
-$('#loginBtn').onclick=()=>authM.classList.add('active');
-$('#closeAuth').onclick=()=>closeAuthModal();
-
-function closeAuthModal(){
-  authM.classList.remove('active');
-  authForm.reset();
-  loginMode=true;
-  $('#authTitle').textContent='Inicia Sesión';
-  $('#authSubmit').textContent='Entrar';
-  $('#extra').style.display='none';
-  $('#pass2').style.display='none';
-  $('#authMsg').textContent='';
-}
-
-$('#toggleAuth').onclick=()=>{
-  loginMode=!loginMode;
-  $('#authTitle').textContent=loginMode?'Inicia Sesión':'Crea tu Cuenta';
-  $('#authSubmit').textContent=loginMode?'Entrar':'Registrar';
-  $('#extra').style.display=loginMode?'none':'block';
-  $('#pass2').style.display=loginMode?'none':'block';
-  $('#authMsg').textContent='';
-};
-
-/* Geocode registro (referencia) */
-$('#geoBtn').onclick=async()=>{
-  const addr=$('#addr').value.trim();
-  if(!addr) return alert('Ingresa dirección');
-  const d=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Temuco, Chile')}`).then(r=>r.json());
-  if(!d[0]) return alert('No encontrada');
-  const {lat,lon}=d[0];
-  const km=Math.round(dist(ORIGIN[0],ORIGIN[1],+lat,+lon)*10)/10;
-  $('#distText').textContent=`Referencia: estás a ${km} km del local.`;
-  $('#map').style.display='block';
-
-  if(!window._map){
-    window._map=L.map('map').setView([lat,lon],13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(window._map);
-  }
-  window._map.setView([lat,lon],13);
-  if(window._mk) window._map.removeLayer(window._mk);
-  window._mk=L.marker([lat,lon]).addTo(window._map);
-
-  if(!user) user={};
-  Object.assign(user,{lat:+lat,lng:+lon,address:addr});
-};
-
-function updateUserUI(){
-  if(user && user.email){
-    $('#userInfo').textContent=`Hola, ${user.nombre || 'Cliente'} (${user.points||0} pts)`;
-    $('#pts').textContent=user.points||0;
-    $('#ptsBox').style.display='block';
-    renderRewards();
-  }else{
-    $('#userInfo').textContent='';
-    $('#ptsBox').style.display='none';
-    $('#rewardsList').innerHTML='';
-  }
-}
-
-$('#authForm').onsubmit = async (e)=>{
+$('#couponBtn').onclick=e=>{
   e.preventDefault();
-
-  const email=$('#email').value.trim().toLowerCase();
-  const pass=$('#pass').value;
-  const pass2=$('#pass2').value;
-  const msg=$('#authMsg');
-  msg.textContent='';
-
-  const submitBtn=$('#authSubmit');
-  submitBtn.disabled=true;
-  submitBtn.textContent = loginMode ? 'Entrando...' : 'Registrando...';
-
-  try{
-    if(loginMode){
-      // LOGIN: leer doc en users/email
-      const snap = await db.collection('users').doc(email).get();
-      if(!snap.exists) throw new Error('No existe una cuenta con ese correo.');
-      const data = snap.data();
-      if((data.pass||'') !== pass) throw new Error('Contraseña incorrecta.');
-      user = data;
-      toast('Sesión iniciada ✅');
-    }else{
-      // REGISTRO
-      if(pass !== pass2) throw new Error('Las contraseñas no coinciden.');
-      if(!user || !user.address) throw new Error('Confirma tu dirección (referencia) antes de registrarte.');
-
-      // Verificar si ya existe
-      const exists = await db.collection('users').doc(email).get();
-      if(exists.exists) throw new Error('Ese correo ya está registrado. Intenta iniciar sesión.');
-
-      user = {
-        ...user,
-        email,
-        pass, // PROTOTIPO: en producción NO guardar pass así
-        nombre:$('#name').value.trim(),
-        apellido:$('#last').value.trim(),
-        phone:normalizePhone($('#phone').value),
-        points:0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('users').doc(email).set(user);
-      toast('Cuenta creada ✅');
-    }
-
-    updateUserUI();
-    closeAuthModal();
-
-    if($('#cartModal').classList.contains('wait-login')){
-      $('#cartModal').classList.remove('wait-login');
-      calc();
-      $('#cartModal').classList.add('active');
-    }
-  }catch(err){
-    console.error(err);
-    msg.textContent = err.message || 'Error. Revisa conexión / hosting (no file://).';
-  }finally{
-    submitBtn.disabled=false;
-    submitBtn.textContent = loginMode ? 'Entrar' : 'Registrar';
-  }
+  const c=$('#coupon').value.trim().toUpperCase();
+  code=CODE[c]?c:null;
+  $('#couponMsg').textContent=code?'Aplicado ✓':'Inválido';
+  calc();
+};
+$('#redeem').onchange=e=>{
+  redeem=e.target.checked;
+  calc();
 };
 
-/* ===========================
-   TOTAL + WHATSAPP + FIRESTORE ORDERS
-=========================== */
 function calc(){
-  const sub = parseInt(($('#sub').textContent||'0').replace(/\./g,''))||0;
+  const sub=parseInt($('#sub').textContent.replace(/\./g,''))||0;
   let del=0,km=0;
-  if(delType==='delivery' && orderDelivery){
-    del=orderDelivery.fee; km=orderDelivery.km;
+  if(delType==='delivery'&&user){
+    del=user.fee;
+    km=user.km;
   }
-  $('#delRow').style.display=(delType==='delivery' && orderDelivery)?'block':'none';
+  $('#delRow').style.display=delType==='delivery'?'block':'none';
   $('#del').textContent=fmt(del);
   $('#km').textContent=km;
 
-  const disc = code ? Math.round(sub*CODE[code]) : 0;
+  const disc=code?Math.round(sub*CODE[code]):0;
   $('#discRow').style.display=disc?'block':'none';
   $('#disc').textContent=fmt(disc);
 
-  const tot = sub + del - disc;
+  if(!user||!user.points){
+    redeem=false;
+    $('#redeem').checked=false;
+  }
+  $('#redeem').disabled=!user||!user.points;
+
+  const red=redeem?Math.min(user.points*VAL,sub+del-disc):0;
+  $('#redRow').style.display=red?'block':'none';
+  $('#red').textContent=fmt(red);
+
+  const tot=sub+del-disc-red;
   $('#tot').textContent=fmt(tot);
+  buildLink(tot,red);
+} 
 
-  buildCheckout(tot, sub, del, disc);
-}
-
-function buildCheckout(total, sub, delCost, disc){
-  $('#checkout').onclick = async (e)=>{
-    e.preventDefault();
-
-    if(!user || !user.email){
+/* Construir enlace de WhatsApp */
+function buildLink(total,red){
+  $('#checkout').onclick=e=>{
+    if(!user){
+      e.preventDefault();
       $('#cartModal').classList.remove('active');
       $('#cartModal').classList.add('wait-login');
       authM.classList.add('active');
       return;
     }
     if(total<=0){
-      alert('Tu pedido está vacío.');
-      return;
-    }
-    if(delType==='delivery' && (!orderDelivery || !orderDelivery.address)){
-      alert('Confirma la dirección de delivery.');
+      e.preventDefault();
       return;
     }
 
-    // Validaciones de tiempo
-    const now=new Date();
-    const minWaitMs=25*60*1000;
-    const minDate=new Date(now.getTime()+minWaitMs);
-    let scheduledDate=null;
+    const comment = ($('#orderComment').value || '').trim();
 
-    if(whenType==='later'){
-      const dVal=$('#schedDate').value;
-      const tVal=$('#schedTime').value;
-      if(!dVal || !tVal){
-        alert('Selecciona fecha y hora.');
-        return;
-      }
-      const [y,m,d]=dVal.split('-').map(Number);
-      const [hh,mm]=tVal.split(':').map(Number);
-      const dt=new Date(y,m-1,d,hh,mm,0);
-      scheduledDate=dt;
+    const earn=Math.floor(total*RATE);
+    user.pending=earn;
+    user.pendingAt=Date.now();
+    saveUsers();
 
-      if(dt < minDate){
-        alert('El pedido debe programarse con mínimo 25 min.');
-        return;
-      }
-      if(!isInSchedule(dt)){
-        alert('Hora fuera del horario de atención.');
-        return;
-      }
-    }else{
-      if(!isOpenNow()){
-        alert('Estamos cerrados ahora. Programa un horario disponible.');
-        return;
-      }
-    }
-
-    const comment = ($('#orderComment').value||'').trim();
-
-    // Items para Firestore
-    const items = Object.entries(cart).map(([id,q])=>{
-      const it=MENU.find(m=>m.id==id);
-      return {id:+id,name:it?.name||'',qty:q,unitPrice:it?.price||0,lineTotal:(it?.price||0)*q};
-    });
-    const rewardsItems = Object.entries(cartRewards).map(([id,q])=>{
-      const it=MENU.find(m=>m.id==id);
-      return {id:+id,name:it?.name||'',qty:q,reward:true};
-    });
-
-    const orderData = {
-      items,
-      rewards: rewardsItems,
-      subtotal: sub,
-      deliveryCost: delCost,
-      discount: disc,
-      discountCode: code || null,
-      total,
-      deliveryType: delType,
-      deliveryAddress: (delType==='delivery' && orderDelivery)? orderDelivery.address : null,
-      deliveryKm: (delType==='delivery' && orderDelivery)? orderDelivery.km : null,
-      comment,
-      whenType,
-      scheduledAt: scheduledDate ? firebase.firestore.Timestamp.fromDate(scheduledDate) : null,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      user:{
-        email:user.email,
-        nombre:user.nombre||'',
-        apellido:user.apellido||'',
-        phone:user.phone||'',
-        address:user.address||null
-      },
-      status:'pendiente',
-      source:'web'
-    };
-
-    try{
-      await db.collection('orders').add(orderData);
-    }catch(err){
-      console.warn('No se pudo guardar pedido (revisa hosting http/https):',err);
-      // igual seguimos con WhatsApp
-    }
-
-    // Mensaje WhatsApp
-    let msg = `Hola Mamma Maggi!%0A%0A🍕 *Pedido:*%0A`;
+    let msg=`Hola Mamma Maggi!%0APedido:%0A`;
     for(const id in cart){
       const it=MENU.find(m=>m.id==id);
-      msg += `• ${cart[id]} x ${it.name}%0A`;
+      msg+=`${cart[id]} x ${it.name}%0A`;
     }
-    for(const rid in cartRewards){
-      const it=MENU.find(m=>m.id==rid);
-      msg += `• ${cartRewards[rid]} x ${it.name} *(canje)*%0A`;
+    msg+=`%0ATotal: $${fmt(total)}`;
+    if(comment){
+      msg+=`%0AComentario: ${comment}`;
     }
+    msg+=`%0A${user.address||''}%0ATel: ${user.phone}`;
 
-    msg += `%0A💰 *Total:* $${fmt(total)}`;
-    if(disc>0) msg += `%0A🏷️ *Descuento:* -$${fmt(disc)} (${code})`;
-
-    if(whenType==='later' && scheduledDate){
-      const dVal=$('#schedDate').value, tVal=$('#schedTime').value;
-      msg += `%0A⏰ *Para:* ${dVal} ${tVal}`;
-    }else{
-      msg += `%0A⏰ *Para:* lo antes posible (mín. 25 min)`;
-    }
-
-    if(delType==='delivery'){
-      msg += `%0A🚚 *Modalidad:* Delivery`;
-      msg += `%0A📍 *Entrega:* ${orderDelivery.address}`;
-      msg += `%0A📏 *Distancia:* ${orderDelivery.km} km`;
-    }else{
-      msg += `%0A🏠 *Modalidad:* Retiro en local`;
-    }
-
-    if(comment) msg += `%0A📝 *Comentario:* ${comment}`;
-    msg += `%0A📞 *Tel cliente:* ${user.phone||''}`;
-
-    const waURL = `https://wa.me/${PHONE}?text=${msg}`;
-    window.open(waURL,'_blank');
+    e.currentTarget.href=`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
   };
 }
-
-/* ===========================
-   ADMIN PANEL
-=========================== */
-$('#adminEnter').onclick = ()=>{
-  if($('#adminPass').value === ADMIN_PASS){
-    $('#adminLogin').style.display='none';
-    $('#adminContent').style.display='block';
-    loadOrders();
-  }else alert('Clave incorrecta');
-};
-$('#refreshOrders').onclick = loadOrders;
-
-function loadOrders(){
-  const container=$('#ordersList');
-  container.innerHTML='Cargando pedidos...';
-
-  db.collection('orders')
-    .orderBy('createdAt','desc')
-    .limit(60)
-    .get()
-    .then(snap=>{
-      if(snap.empty){
-        container.innerHTML='<p style="opacity:.85;">No hay pedidos registrados.</p>';
-        return;
-      }
-      container.innerHTML='';
-      snap.forEach(doc=>{
-        const data=doc.data();
-        const created=data.createdAt ? data.createdAt.toDate() : null;
-        const fecha=created ? created.toLocaleString('es-CL') : '---';
-        const para = data.whenType==='later' && data.scheduledAt ? data.scheduledAt.toDate().toLocaleString('es-CL') : 'ASAP';
-
-        const div=document.createElement('div');
-        div.className='admin-order';
-        div.innerHTML=`
-          <div class="admin-order-header">
-            <span>${data.user?.nombre || 'Cliente'} • ${data.user?.phone || ''}</span>
-            <span>${fecha}</span>
-          </div>
-          <div class="admin-order-body">
-            <p><strong>Total:</strong> $${fmt(data.total||0)} ${data.discount?`<span style="opacity:.8">(-$${fmt(data.discount)} ${data.discountCode||''})</span>`:''}</p>
-            <p><strong>Para:</strong> ${para}</p>
-            <p><strong>Modalidad:</strong> ${data.deliveryType==='delivery'?'Delivery':'Retiro'} ${data.deliveryAddress?`• <strong>Entrega:</strong> ${data.deliveryAddress}`:''}</p>
-            <p><strong>Estado:</strong> ${data.status||'pendiente'}</p>
-            ${data.comment?`<p><strong>Comentario:</strong> ${data.comment}</p>`:''}
-            <p><strong>Items:</strong></p>
-            <ul>
-              ${(data.items||[]).map(it=>`<li>${it.qty} x ${it.name}</li>`).join('')}
-              ${(data.rewards||[]).map(it=>`<li>${it.qty} x ${it.name} (canje)</li>`).join('')}
-            </ul>
-          </div>
-        `;
-        container.appendChild(div);
-      });
-    })
-    .catch(err=>{
-      console.error(err);
-      container.innerHTML='<p style="color:#ff9aa2;">Error cargando pedidos. (Tip: no abrir como file://, usa http/https)</p>';
-    });
-}
-
-/* ===========================
-   INIT
-=========================== */
-updateOpenBadge();
-setInterval(updateOpenBadge, 60*1000);
-
-renderMenu();
-updateCount();
-renderCart();
-
-/* Programación: si el usuario abre carrito y elige “programar” */
-buildScheduleOptions();
-
-/* ===========================
-   IMPORTANTÍSIMO:
-   Si ves "cliente offline", abre esta página con http/https
-   (Live Server o GitHub Pages), NO con file://
-=========================== */
 </script>
 </body>
 </html>
